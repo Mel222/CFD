@@ -175,6 +175,7 @@ subroutine start(myid,status,ierr)
     read(40,20) npeakz        ! number of points representing the blade tip
     read(40,10) Lfracx        ! number of points representing the blade tip
     read(40,10) Lfracz        ! number of points representing the blade tip
+    read(40,10) shift_stag    ! fraction of spacing that 2nd row is shifted 
     read(40,20) dsty          ! number of points representing canopy in y 
     read(40,20) dstx          ! number of points representing canopy in x
     read(40,20) dstz          ! number of points representing canopy in z
@@ -275,6 +276,7 @@ end if
     inputR(14) = Lfracx
     inputR(15) = Lfracz
     inputR(16) = posth
+    inputR(17) = shift_stag
     inputInt(1) = flag_init
     inputInt(2) = nwrite
     inputInt(3) = nn
@@ -326,6 +328,7 @@ end if
     Lfracx    = inputR(14)
     Lfracz    = inputR(15)
     posth     = inputR(16)
+    shift_stag= inputR(17)
     flag_init     = inputInt(1)
     nwrite        = inputInt(2)
     nn            = inputInt(3)

@@ -60,6 +60,10 @@ subroutine boundary_canopies
     write(*,*) 'ERROR: ntilez equals 0'
     stop
   end if
+  if (mod(ntilex,2).ne.0) then
+    write(*,*) 'ERROR: ntilex is not even'
+    stop
+  end if
   if (mod(Ngal(1,1),ntilez)/=0) then
     write(*,*) 'ERROR: nx not multiple of ntilex'
     stop
@@ -177,9 +181,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 ! CREATE FIRST STEM MEL
 
   points_stem_s = dsty*nlist_s_xz   ! Total number of forcing points in one stem  
-  points_stem_f = dsty*nlist_f_xz   ! Total number of forcing points in one stem  
+  points_stem_f = dsty*nlist_f_xz   ! Total number of forcing points in one stem 
+  if(shift_stag .eq. 0d0) then
   nlist_ib_s_bot = ntilex*ntilez*points_stem_s    ! Number of points in all stems.    
   nlist_ib_f_bot = ntilex*ntilez*points_stem_f    ! Number of points in all stems.    
+  else 
+  write(*,*) 'shift_stag ', shift_stag
+  nlist_ib_s_bot = (ntilex*(ntilez-1)+ntilex/2)*points_stem_s    ! Number of points in all stems
+  nlist_ib_f_bot = (ntilex*(ntilez-1)+ntilex/2)*points_stem_f    ! Number of points in all stems
+!  nlist_ib_f_bot = ntilex*ntilez*points_stem_f    ! Number of points in all stems.    
+  end if
 
   allocate(list_ib_s_bot(  3,nlist_ib_s_bot,2))
   allocate(list_ib_f_bot(  9,nlist_ib_f_bot,2))
@@ -388,15 +399,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 ! This section should be common for all geometries
   do grid = 1,2
     do ix = 1,ntilex
-      do iz = 1,ntilez
-        shift = points_stem_s*(iz-1) + points_stem_s*ntilez*(ix-1) 
+      do iz = 1,ntilez-mod(ix+1,2)
+        shift = points_stem_s*(iz-1 + floor(ix/2d0)) + points_stem_s*(ntilez-1)*(ix-1) 
         do ilist = 1,points_stem_s
           list_ib_s_bot(1,ilist+shift,grid) = list_ib_s_bot(1,ilist,grid) + dnx*(ix-1)  ! i 
-          list_ib_s_bot(2,ilist+shift,grid) = list_ib_s_bot(2,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_s_bot(2,ilist+shift,grid) = list_ib_s_bot(2,ilist,grid) + dnz*(iz-1) &! k
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_s_bot(3,ilist+shift,grid) = list_ib_s_bot(3,ilist,grid)               ! j 
-
           list_ib_s_top(1,ilist+shift,grid) = list_ib_s_top(1,ilist,grid) + dnx*(ix-1)  ! i 
-          list_ib_s_top(2,ilist+shift,grid) = list_ib_s_top(2,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_s_top(2,ilist+shift,grid) = list_ib_s_top(2,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_s_top(3,ilist+shift,grid) = list_ib_s_top(3,ilist,grid)               ! j 
         end do
       end do
@@ -405,17 +417,25 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
   
   do grid = 1,2
     do ix = 1,ntilex
-      do iz = 1,ntilez
-        shift = points_stem_f*(iz-1) + points_stem_f*ntilez*(ix-1) 
+!      do iz = 1,ntilez-1
+      do iz = 1,ntilez-mod(ix+1,2)
+        shift = points_stem_f*(iz-1 + floor(ix/2d0)) + points_stem_f*(ntilez-1)*(ix-1) 
+!        shift = points_stem_f*(iz-1) + points_stem_f*ntilez*(ix-1) 
         do ilist = 1,points_stem_f
           list_ib_f_bot(1,ilist+shift,grid) = list_ib_f_bot(1,ilist,grid) + dnx*(ix-1)  ! i
-          list_ib_f_bot(2,ilist+shift,grid) = list_ib_f_bot(2,ilist,grid) + dnz*(iz-1)  ! k 
+!          list_ib_f_bot(2,ilist+shift,grid) = list_ib_f_bot(2,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_bot(2,ilist+shift,grid) = list_ib_f_bot(2,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_f_bot(3,ilist+shift,grid) = list_ib_f_bot(3,ilist,grid)               ! j 
           list_ib_f_bot(4,ilist+shift,grid) = list_ib_f_bot(4,ilist,grid) + dnx*(ix-1)  ! i
-          list_ib_f_bot(5,ilist+shift,grid) = list_ib_f_bot(5,ilist,grid) + dnz*(iz-1)  ! k 
+!          list_ib_f_bot(5,ilist+shift,grid) = list_ib_f_bot(5,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_bot(5,ilist+shift,grid) = list_ib_f_bot(5,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_f_bot(6,ilist+shift,grid) = list_ib_f_bot(6,ilist,grid)               ! j 
           list_ib_f_bot(7,ilist+shift,grid) = list_ib_f_bot(7,ilist,grid) + dnx*(ix-1)  ! i
-          list_ib_f_bot(8,ilist+shift,grid) = list_ib_f_bot(8,ilist,grid) + dnz*(iz-1)  ! k 
+!          list_ib_f_bot(8,ilist+shift,grid) = list_ib_f_bot(8,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_bot(8,ilist+shift,grid) = list_ib_f_bot(8,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_f_bot(9,ilist+shift,grid) = list_ib_f_bot(9,ilist,grid)               ! j 
 
           list_ib_f_w_bot(1,ilist+shift,grid) = list_ib_f_w_bot(1,ilist,grid)
@@ -423,13 +443,20 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
           list_ib_f_w_bot(3,ilist+shift,grid) = list_ib_f_w_bot(3,ilist,grid)
  
           list_ib_f_top(1,ilist+shift,grid) = list_ib_f_top(1,ilist,grid) + dnx*(ix-1)  ! i 
-          list_ib_f_top(2,ilist+shift,grid) = list_ib_f_top(2,ilist,grid) + dnz*(iz-1)  ! k 
+!          list_ib_f_top(2,ilist+shift,grid) = list_ib_f_top(2,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_top(2,ilist+shift,grid) = list_ib_f_top(2,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_f_top(3,ilist+shift,grid) = list_ib_f_top(3,ilist,grid)               ! j 
           list_ib_f_top(4,ilist+shift,grid) = list_ib_f_top(4,ilist,grid) + dnx*(ix-1)  ! i 
-          list_ib_f_top(5,ilist+shift,grid) = list_ib_f_top(5,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_top(4,ilist+shift,grid) = list_ib_f_top(4,ilist,grid) + dnx*(ix-1)  ! i 
+!          list_ib_f_top(5,ilist+shift,grid) = list_ib_f_top(5,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_top(5,ilist+shift,grid) = list_ib_f_top(5,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_f_top(6,ilist+shift,grid) = list_ib_f_top(6,ilist,grid)               ! j 
           list_ib_f_top(7,ilist+shift,grid) = list_ib_f_top(7,ilist,grid) + dnx*(ix-1)  ! i 
-          list_ib_f_top(8,ilist+shift,grid) = list_ib_f_top(8,ilist,grid) + dnz*(iz-1)  ! k 
+!          list_ib_f_top(8,ilist+shift,grid) = list_ib_f_top(8,ilist,grid) + dnz*(iz-1)  ! k 
+          list_ib_f_top(8,ilist+shift,grid) = list_ib_f_top(8,ilist,grid) + dnz*(iz-1) &! k 
+&                                           + mod(ix+1,2)*dnz*shift_stag     
           list_ib_f_top(9,ilist+shift,grid) = list_ib_f_top(9,ilist,grid)               ! j 
 
 
