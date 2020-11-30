@@ -1549,7 +1549,8 @@ subroutine ops_in_planes(myid,flagst)
   du3dx = 0d0
   du3dz = 0d0
 
-  do j = limPL_excw(ugrid,1,myid),limPL_excw(ugrid,2,myid)
+!  do j = limPL_excw(ugrid,1,myid),limPL_excw(ugrid,2,myid)
+  do j = limPL_incw(ugrid,1,myid),limPL_incw(ugrid,2,myid) ! Mel 30/11/2020
 
     call four_to_phys_u(u1PL(1,1,j),u2PL_itp(1,1,j),u3PL(1,1,j),bandPL(myid))
 
@@ -1592,7 +1593,8 @@ subroutine ops_in_planes(myid,flagst)
     
     
     
-  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
+!  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
+  do j = limPL_incw(vgrid,1,myid),limPL_incw(vgrid,2,myid) !Mel 30/11/2020
     
     call four_to_phys_u(u1PL_itp(1,1,j),u2PL(1,1,j),u3PL_itp(1,1,j),bandPL(myid))
     
