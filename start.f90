@@ -1215,6 +1215,14 @@ subroutine getbounds(myid,status,ierr)
         inputNv(2*np+1+3) = nyv12
         inputNv(2*np+1+4) = nyv22
 
+        write(*,*) 'myid', myid
+        write(*,*) 'iproc', iproc
+        write(*,*) 'nlist', nlist_ib_f(2)
+        write(*,*)  'j', f_list_ib(3,100,2)
+        write(*,*)  'w', w_list_ib(1,100,2)
+        write(*,*)
+!  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+
         call MPI_SEND(inputNu,2*np+1+5           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(inputNv,2*np+1+5           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
@@ -1342,7 +1350,14 @@ subroutine getbounds(myid,status,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
         call MPI_SEND(s_list_ib,3*nlist_ib_s(ugrid)*2,MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(f_list_ib,9*nlist_ib_f(ugrid)*2,MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_INTEGER,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_REAL8  ,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
+
+!        write(*,*) 'myid', myid
+!        write(*,*) 'iproc', iproc
+!        write(*,*) 'nlist', nlist_ib_f(2)
+!        write(*,*)  'j', f_list_ib(3,100,2)
+!        write(*,*)  'w', w_list_ib(1,100,2)
+!        write(*,*)
         deallocate(s_list_ib, f_list_ib, w_list_ib)
       end do
 
@@ -1471,12 +1486,24 @@ subroutine getbounds(myid,status,ierr)
       ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
       call MPI_RECV  (s_list_ib,3*nlist_ib_s(ugrid)*2,MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
       call MPI_RECV  (f_list_ib,9*nlist_ib_f(ugrid)*2,MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_INTEGER,0,24000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_REAL8  ,0,24000+myid,MPI_COMM_WORLD,status,ierr)
+!if (myid == 7) then
+!  write(*,*) 'myid', myid
+!  write(*,*) 'nlist', nlist_ib_f(2)
+!  write(*,*)  'j', f_list_ib(3,100,2)
+!  write(*,*)  'w', w_list_ib(1,100,2)
+!end if
     end if
     deallocate(inputNu)
     deallocate(inputNv)
   end if
- 
+!  write(*,*) 'myid', myid
+!  write(*,*) 'nlist', nlist_ib_f(2)
+!  write(*,*)  'j', f_list_ib(3,100,2)
+!  write(*,*)  'w', w_list_ib(1,100,2)
+!  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+!  stop
+
 end subroutine
 
 subroutine proc_lims_columns(myid)

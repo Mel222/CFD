@@ -101,8 +101,8 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
 
 
  call immersed_boundaries_U(u,rhsu,Lu,grid,myid)
- call MPI_BARRIER(MPI_COMM_WORLD,ierr)
- stop 
+! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+! stop 
   do iband = sband,eband
     do column = 1,columns_num(iband,myid)
       u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*ay(2,jlim(1,grid,iband),iband)
@@ -171,7 +171,7 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
     enddo
   enddo
   
-! call immersed_boundaries_V(u,rhsu,Lu,grid,myid)
+ call immersed_boundaries_V(u,rhsu,Lu,grid,myid)
 
 
 ! -Original   
@@ -235,10 +235,13 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
      i = s_list_ib(1,ilist,grid)
      k = s_list_ib(2,ilist,grid)
      j = s_list_ib(3,ilist,grid)
+!     if (myid==0) then
+!     write(*,*) i , k, j, ';'
+!     end if 
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)   
    enddo
 
-   write(*,*) 'myid', myid
+!   write(*,*) 'myid', myid
    do ilist = 1,nlist_ib_f(grid)
      i = f_list_ib(1,ilist,grid)
      k = f_list_ib(2,ilist,grid)
@@ -256,9 +259,7 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
 
      v_f = w1*0d0 + w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
 
-     if (j == 0) then 
-     write(*,*) k
-     end if
+!     write(*,*) i , k, j, ';'
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
 
