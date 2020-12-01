@@ -1228,7 +1228,7 @@ subroutine getbounds(myid,status,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
         call MPI_SEND(s_list_ib,3*nlist_ib_s(ugrid)*2,MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(f_list_ib,9*nlist_ib_f(ugrid)*2,MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_INTEGER,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_REAL8,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
         deallocate(s_list_ib, f_list_ib, w_list_ib)
       end do
 
