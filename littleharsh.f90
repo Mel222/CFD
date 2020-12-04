@@ -160,6 +160,7 @@ nextqt = floor(t*10d0)/10d0+0.1d0
   !do while (t<maxt .AND. iter < 200)
     ! Runge-Kutta substeps
     do kRK = 1,3
+!    do kRK = 1,1
       ! Build     linear terms of right-hand-side of Navier-Stokes equation
       call RHS0_u1(du1,u1,Nu1,p,Lu1,myid)
       call RHS0_u2(du2,u2,Nu2,p,Lu2,myid)
@@ -756,6 +757,28 @@ subroutine solveU(u,du,Lu,myid)
 
   call LUsolU(u,du,Lu,ugrid,myid)
 !call LUsolV(du,ugrid,myid) !Can use for smooth channel
+
+!  do iband = sband,eband
+!    do column = 1,columns_num(iband,myid)
+!      do j = jlim(1,ugrid,iband),jlim(2,ugrid,iband)
+!        u(iband)%f(j,column) = du(iband)%f(j,column) !For solving for u
+!      enddo
+!    enddo
+!  end do
+
+!if (myid ==0 ) then
+!  write(*,*) 'du'
+!  do j = jlim(1,ugrid,2),jlim(2,ugrid,2)
+!    write(*,*) REAL(du(2)%f(j,1)), AIMAG(du(2)%f(j,1))
+!  end do 
+!end if 
+
+!if (myid ==0 ) then
+!  write(*,*) 'u'
+!  do j = jlim(1,ugrid,2),jlim(2,ugrid,2)
+!    write(*,*) REAL(u(2)%f(j,1))!, AIMAG(u(2)%f(j,1))
+!  end do
+!end if
 
 end subroutine
 
