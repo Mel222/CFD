@@ -103,6 +103,7 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
  call immersed_boundaries_U(u,rhsu,Lu,grid,myid)
 ! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 ! stop 
+! Mel's version
   do iband = sband,eband
     do column = 1,columns_num(iband,myid)
       u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*ay(2,jlim(1,grid,iband),iband)
@@ -114,6 +115,18 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
       end do
     end do
   enddo
+! Akshath's version
+!  do iband = sband,eband
+!    do column = 1,columns_num(iband,myid)
+!      rhsu(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*ay(2,jlim(1,grid,iband),iband)
+!      do j = jlim(1,grid,iband)+1,jlim(2,grid,iband)
+!        rhsu(iband)%f(j,column) = (rhsu(iband)%f(j,column)-ay(1,j,iband)*rhsu(iband)%f(j-1,column))*ay(2,j,iband)
+!      end do
+!      do j = jlim(2,grid,iband)-1,jlim(1,grid,iband),-1
+!        rhsu(iband)%f(j,column) = rhsu(iband)%f(j,column)-ay(3,j,iband)*rhsu(iband)%f(j+1,column)
+!      end do
+!    end do
+!  enddo
 
   deallocate(axz)
   deallocate(ay)
