@@ -64,7 +64,7 @@ subroutine boundary_canopies
     write(*,*) 'ERROR: ntilex is not even'
     stop
   end if
-  if (mod(Ngal(1,1),ntilez)/=0) then
+  if (mod(Ngal(1,1),ntilex)/=0) then
     write(*,*) 'ERROR: nx not multiple of ntilex'
     stop
   end if
