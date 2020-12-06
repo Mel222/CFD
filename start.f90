@@ -1215,14 +1215,6 @@ subroutine getbounds(myid,status,ierr)
         inputNv(2*np+1+3) = nyv12
         inputNv(2*np+1+4) = nyv22
 
-        write(*,*) 'myid', myid
-        write(*,*) 'iproc', iproc
-        write(*,*) 'nlist', nlist_ib_f(2)
-        write(*,*)  'j', f_list_ib(3,100,2)
-        write(*,*)  'w', w_list_ib(1,100,2)
-        write(*,*)
-!  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-
         call MPI_SEND(inputNu,2*np+1+5           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(inputNv,2*np+1+5           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
