@@ -98,6 +98,20 @@ print*, "nyv11, 21, 12, 22", nyv11, nyv21, nyv12, nyv22
 print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
 ! CREATE CIRCULAR CROSS SECTION IN I-K PLANE MEL
+!
+!    i
+!    ^
+!    |      ___          dstx
+!    |   _-     -_
+!    |  -         -
+!    | *     *     *     1+(dtsx-1)/2
+!    |  _         _
+!    |   -       -
+! 1  |      ---          1
+! 0 -|-----------------> k
+!    0 1  centre  dstx
+!
+! centre point (1+(dstx-1)/2, 1+(dstx-1)/2)
   radius = (dstx-1)/2d0
 
   allocate(test_circ(0:dstx+1,0:dstx+1))
@@ -557,26 +571,43 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, gr
   n_z_sign = n_z / abs(n_z)
   n_x_sign = n_x / abs(n_x)
 
-  if (n_z .eq. 0) then
-    
-    z2 = k_ele - 1
-    x2 = i_ele + n_x_sign 
-    z3 = k_ele + 1
+!write(*,*) 'i_ele, k_ele', i_ele, k_ele
+!write(*,*) 'n_x', n_x
+!write(*,*) 'n_z', n_z
+!write(*,*) 'n_x_sign', n_x_sign
+!write(*,*) 'n_z_sign', n_z_sign
+!write(*,*) 'i_ele -r', abs(i_ele-radius-1d0)
+!write(*,*) 'k_ele -r', abs(k_ele-radius-1d0)
+!write(*,*) 
+
+  if (abs(i_ele-radius-1d0) .eq. abs(k_ele-radius-1d0)) then
+!  if (abs(n_x) .eq. abs(n_z)) then !only accurate to 3dp so doesnt work
+  ! Diagonal point 
+    z2 = k_ele + n_z_sign
+    x2 = i_ele  
+    z3 = k_ele 
     x3 = i_ele + n_x_sign 
 
-  elseif (n_x .eq. 0) then 
-    
+  elseif (abs(n_x) .lt. abs(n_z)) then 
+  ! Between 10.5 o clock and 1.5 o clock  
+  ! Between 4.5 o clock and 7.5 o clock 
     z2 = k_ele + n_z_sign
-    x2 = i_ele - 1  
+    x2 = i_ele   
     z3 = k_ele + n_z_sign
-    x3 = i_ele + 1
-
-  else 
-
-    z2 = k_ele + n_z_sign
-    x2 = i_ele
-    z3 = k_ele
     x3 = i_ele + n_x_sign
+
+  elseif (abs(n_x) .gt. abs(n_z)) then 
+  ! Between 1.5 o clock and 4.5 o clock 
+  ! Between 1.5 o clock and 4.5 o clock 
+    z2 = k_ele 
+    x2 = i_ele + n_x_sign 
+    z3 = k_ele + n_z_sign
+    x3 = i_ele + n_x_sign
+
+  else
+ 
+  write(*,*) 'Mel fucked up'
+  stop
  
   end if
 
