@@ -72,6 +72,10 @@ subroutine boundary_canopies
     write(*,*) 'ERROR: nz not multiple of ntilez'
     stop
   end if
+  if (mod(dstx,2).eq.0) then
+    write(*,*) 'WARNING: would be better if dstx was odd'
+    stop
+  end if
 
   dnx = Ngal(1,1)/ntilex  ! Width:  Number of points per tile the in streamwise direction
   dnz = Ngal(2,1)/ntilez  ! Width:  Number of points per tile the in spanwise   direction
@@ -152,9 +156,12 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !          test_circ(8 ,k_ele,i_ele) = weicoef(3) ! weighting of fluid point 3
 !          test_circ(9 ,k_ele,i_ele) = zbound     ! z coord of boundary point 1
 !          test_circ(10,k_ele,i_ele) = xbound     ! y coord of boundary point 1
-!write(*,*) 'forcing k, j =', k_ele, j_ele
-!write(*,*) 'fluid 2, 3   =', intp1(1),intp1(2),intp1(3),intp1(4)
+!write(*,*) 'forcing i, j =', i_ele, k_ele
+!write(*,*) 'fluid2  i, j =', interpp(2),interpp(1)
+!write(*,*) 'fluid3  i, j =', interpp(4),interpp(3)
+!write(*,*) 'xbound,zbound=', xbound,zbound
 !write(*,*) 'weighting    =', weicoef(1),weicoef(2),weicoef(3)
+!write(*,*)
         end if
       else
            ! This is a solid point
