@@ -100,7 +100,7 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
   
 
 
- call immersed_boundaries_U(u,rhsu,Lu,grid,myid)
+ call immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
 ! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 ! stop 
 ! Mel's version
@@ -184,7 +184,7 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
     enddo
   enddo
   
- call immersed_boundaries_V(u,rhsu,Lu,grid,myid)
+ call immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
 
 
 ! -Original   
@@ -248,13 +248,10 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
      i = s_list_ib(1,ilist,grid)
      k = s_list_ib(2,ilist,grid)
      j = s_list_ib(3,ilist,grid)
-!     if (myid==0) then
-!     write(*,*) i , k, j, ';'
-!     end if 
+
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)   
    enddo
 
-!   write(*,*) 'myid', myid
    do ilist = 1,nlist_ib_f(grid)
      i = f_list_ib(1,ilist,grid)
      k = f_list_ib(2,ilist,grid)
@@ -272,7 +269,6 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
 
      v_f = w1*0d0 + w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
 
-!     write(*,*) i , k, j, ';'
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
 
@@ -331,6 +327,169 @@ subroutine immersed_boundaries_V(u,rhsu,Lu,grid,myid)
      j = s_list_ib(3,ilist,grid)
 
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)
+   enddo
+
+   do ilist = 1,nlist_ib_f(grid)
+     i = f_list_ib(1,ilist,grid)
+     k = f_list_ib(2,ilist,grid)
+     j = f_list_ib(3,ilist,grid)
+     i2= f_list_ib(4,ilist,grid)
+     k2= f_list_ib(5,ilist,grid)
+     j2= f_list_ib(6,ilist,grid)
+     i3= f_list_ib(7,ilist,grid)
+     k3= f_list_ib(8,ilist,grid)
+     j3= f_list_ib(9,ilist,grid)
+
+     w1= w_list_ib(1,ilist,grid)
+     w2= w_list_ib(2,ilist,grid)
+     w3= w_list_ib(3,ilist,grid)
+
+     v_f = w1*0d0 + w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
+
+     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
+   enddo
+
+   do j = nyvIB1(myid),nyvIB2(myid)
+     call phys_to_four_du(rhsuIB(1,1,j),bandPL(myid))
+   enddo
+
+   call planes_to_modes_dV(rhsu,rhsuIB,myid,status,ierr)
+
+   deallocate(rhsuIB)
+   deallocate(LuIB)
+
+end subroutine
+
+
+subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
+   
+   use declaration
+   implicit none 
+
+   include 'mpif.h'
+   integer status(MPI_STATUS_SIZE), ierr, myid
+
+   integer i,j,k, iband,grid,ilist
+   integer i2, j2, k2, i3, j3, k3
+   type(cfield) u(sband:eband)
+   type(cfield) rhsu(sband:eband)
+   type(cfield) Lu(sband:eband)
+   real(8),pointer:: rhsuIB(:,:,:)
+   real(8),pointer:: LuIB(:,:,:)
+   real(8) beta
+   real(8) v_f
+   real(8) w1, w2, w3
+
+   allocate(rhsuIB(igal,kgal,nyuIB1(myid):nyuIB2(myid)))
+   allocate(LuIB  (igal,kgal,nyuIB1(myid):nyuIB2(myid)))
+   
+
+   beta = bRK(kRK)*dt/Re
+   rhsuIB = 0d0
+   LuIB   = 0d0
+   u1PL   = 0d0
+       
+   call modes_to_planes_dU(rhsuIB, rhsu, myid, status, ierr)
+   call modes_to_planes_dU(LuIB,     Lu, myid, status, ierr)
+   call modes_to_planes_UVP(u1PL,     u, grid, myid, status, ierr)
+ 
+   do j = nyuIB1(myid),nyuIB2(myid)
+     call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
+     call four_to_phys_du(LuIB(1,1,j),bandPL(myid))
+     call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
+   enddo
+   do ilist = 1,nlist_ib_s(grid)
+     i = s_list_ib(1,ilist,grid)
+     k = s_list_ib(2,ilist,grid)
+     j = s_list_ib(3,ilist,grid)
+
+
+     rhsuIB(i,k,j) = 0d0
+   
+     if (j==0 .or. j==Ngal(4,3)-dsty+1) then
+       rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)  
+     end if 
+   enddo
+
+   do ilist = 1,nlist_ib_f(grid)
+     i = f_list_ib(1,ilist,grid)
+     k = f_list_ib(2,ilist,grid)
+     j = f_list_ib(3,ilist,grid)
+     i2= f_list_ib(4,ilist,grid)
+     k2= f_list_ib(5,ilist,grid)
+     j2= f_list_ib(6,ilist,grid)
+     i3= f_list_ib(7,ilist,grid)
+     k3= f_list_ib(8,ilist,grid)
+     j3= f_list_ib(9,ilist,grid)
+     
+     w1= w_list_ib(1,ilist,grid)
+     w2= w_list_ib(2,ilist,grid)
+     w3= w_list_ib(3,ilist,grid)
+
+     v_f = w1*0d0 + w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
+
+     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
+   enddo
+
+   do j = nyuIB1(myid),nyuIB2(myid)
+     call phys_to_four_du(rhsuIB(1,1,j),bandPL(myid))
+   enddo
+
+   call planes_to_modes_dU(rhsu,rhsuIB,myid,status,ierr)
+ 
+   deallocate(rhsuIB) 
+   deallocate(LuIB) 
+
+end subroutine
+
+
+subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
+   
+   use declaration
+   implicit none 
+
+   include 'mpif.h'
+   integer status(MPI_STATUS_SIZE), ierr, myid
+
+   integer i,j,k, iband,grid,ilist
+   integer i2, j2, k2, i3, j3, k3
+   type(cfield) u(sband:eband)
+   type(cfield) rhsu(sband:eband)
+   type(cfield) Lu(sband:eband)
+   real(8),pointer:: rhsuIB(:,:,:)
+   real(8),pointer:: LuIB(:,:,:)
+   real(8) beta
+   real(8) v_f
+   real(8) w1, w2, w3
+
+   allocate(rhsuIB(igal,kgal,nyvIB1(myid):nyvIB2(myid)))
+   allocate(LuIB  (igal,kgal,nyvIB1(myid):nyvIB2(myid)))
+
+   beta = bRK(kRK)*dt/Re
+   rhsuIB = 0d0
+   LuIB   = 0d0 
+   u2PL   = 0d0 
+
+   call modes_to_planes_dV(rhsuIB, rhsu, myid, status, ierr)
+   call modes_to_planes_dV(LuIB,     Lu, myid, status, ierr)
+   call modes_to_planes_UVP(u2PL,      u, grid, myid, status, ierr)
+
+   do j = nyvIB1(myid),nyvIB2(myid)
+     call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
+     call four_to_phys_du(LuIB(1,1,j),  bandPL(myid))
+     call four_to_phys_du(u2PL(1,1,j),  bandPL(myid))
+   enddo
+
+   do ilist = 1,nlist_ib_s(grid)
+     i = s_list_ib(1,ilist,grid)
+     k = s_list_ib(2,ilist,grid)
+     j = s_list_ib(3,ilist,grid)
+
+     rhsuIB(i,k,j) = 0d0
+     
+     if (j==-1 .or. j==Ngal(3,3)-dsty+2) then
+       rhsuIB(i,k,j) = -beta*LuIB(i,k,j)
+     end if
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
