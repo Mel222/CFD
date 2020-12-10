@@ -237,7 +237,7 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
        
    call modes_to_planes_dU(rhsuIB, rhsu, myid, status, ierr)
    call modes_to_planes_dU(LuIB,     Lu, myid, status, ierr)
-   call modes_to_planes_dU(u1PL,     u,  myid, status, ierr)
+   call modes_to_planes_UVP(u1PL,     u, grid, myid, status, ierr)
  
    do j = nyuIB1(myid),nyuIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
@@ -317,7 +317,7 @@ subroutine immersed_boundaries_V(u,rhsu,Lu,grid,myid)
 
    call modes_to_planes_dV(rhsuIB, rhsu, myid, status, ierr)
    call modes_to_planes_dV(LuIB,     Lu, myid, status, ierr)
-   call modes_to_planes_dV(u2PL,      u, myid, status, ierr)
+   call modes_to_planes_UVP(u2PL,      u, grid, myid, status, ierr)
 
    do j = nyvIB1(myid),nyvIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
