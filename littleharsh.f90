@@ -167,7 +167,7 @@ nextqt = floor(t*10d0)/10d0+0.1d0
       call RHS0_u3(du3,u3,Nu3,p,Lu3,myid)
       
       ! Build non-linear terms of right-hand-side of Navier-Stokes equation
-      call nonlinear(Nu1,Nu2,Nu3,u1,u2,u3,du1,du2,du3,p,div,myid,status,ierr)
+      !call nonlinear(Nu1,Nu2,Nu3,u1,u2,u3,du1,du2,du3,p,div,myid,status,ierr)
       ! Resolve the matricial system
       call solveU(u1,du1,Lu1,myid)
       call solveV(u2,du2,Lu2,myid)
