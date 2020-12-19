@@ -45,7 +45,7 @@ subroutine start(myid,status,ierr)
   integer status(MPI_STATUS_SIZE),ierr,myid
 
   integer iband,iproc,inputInt(15),k
-  integer i
+  integer i,column
   real(8) inputR(20)           ! Message passing array containing input parameters
 
   iproc = 0
@@ -439,7 +439,21 @@ end if
   ! Computes sband and eband
   !call proc_lims(myid)
   call proc_lims_columns(myid)
+  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+  do iband = 1, nband 
+    write(*,*) 'myid, band, columns_num ', myid, iband, columns_num(iband,myid)
+  end do
+  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+  if (myid == 0) then 
+    do iband = 1,nband
+      do column = 1, columns_num(iband,myid)
+        write(*,*) 'myid,band,column,i,k ',myid, iband, column, columns_i(column,iband,myid), columns_k(column,iband,myid)
+      end do
+    end do
+  end if
   call proc_lims_planes (myid)
+  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+  write(*,*) 'myid, planelim1, 2 ',myid, planelim(vgrid,1,myid), planelim(vgrid,2,myid) 
 
   ! This function send to every proc a list containing points (and weights) of the immersed boundary.
   !  If the planes a proc has to solve are in the middle of the channel, the don't have to deal with the
@@ -1539,6 +1553,10 @@ subroutine proc_lims_columns(myid)
   columns_num_total = (N(1,botband)/2 + 1) * (N(2,botband)) !*
   columns_num_long  = (N(1,midband)/2 + 1) * (N(2,midband)) !*
   columns_num_short = columns_num_total - columns_num_long    !*
+write(*,*) 'columns_num_total', columns_num_total
+write(*,*) 'columns_num_long', columns_num_long
+write(*,*) 'columns_num_short', columns_num_short
+
   ! Distributing the columns among procs (and extra columns/remainder)
   columns_num_short_proc     = columns_num_short/np
   columns_num_short_proc_rem = columns_num_short - columns_num_short_proc*np
@@ -1598,6 +1616,8 @@ subroutine proc_lims_columns(myid)
     end do
   end do
 
+! write(*,*) 'columns_short_i', columns_short_list_i
+! write(*,*) 'columns_short_k', columns_short_list_k
   
   ! Array with the coordinates of all points
   ! Long columns
@@ -1618,7 +1638,8 @@ subroutine proc_lims_columns(myid)
       columns_long_list_k(column) = k
     end do
   end do
-  
+! write(*,*) 'columns_long_i', columns_long_list_i
+! write(*,*) 'columns_long_k', columns_long_list_k
   ! Creating the lists with column coordinates
   ! columns_i(ncolumn,iband,myid) has the x coordiante of column number ncolumn in band iband.
   max_columns_num = maxval(columns_num)
