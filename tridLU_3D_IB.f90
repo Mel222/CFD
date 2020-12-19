@@ -101,8 +101,8 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
 
 
  call immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
-! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-! stop 
+ call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+ stop 
 ! Mel's version
   do iband = sband,eband
     do column = 1,columns_num(iband,myid)
