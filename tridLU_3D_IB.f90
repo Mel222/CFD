@@ -101,8 +101,8 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
 
 
  call immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
- call MPI_BARRIER(MPI_COMM_WORLD,ierr)
- stop 
+! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+! stop 
 ! Mel's version
   do iband = sband,eband
     do column = 1,columns_num(iband,myid)
@@ -392,6 +392,9 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
    call modes_to_planes_dU(rhsuIB, rhsu, myid, status, ierr)
    call modes_to_planes_dU(LuIB,     Lu, myid, status, ierr)
    call modes_to_planes_UVP(u1PL,     u, grid, myid, status, ierr)
+   call planes_to_modes_UVP(u,     u1PL, grid, myid, status, ierr)
+   call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+   stop 
  
    do j = nyuIB1(myid),nyuIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
