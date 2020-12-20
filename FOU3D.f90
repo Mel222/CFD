@@ -827,30 +827,54 @@ subroutine modes_to_planes_UVP (xPL,x,grid,myid,status,ierr)
 
   ! Loop for itself
   ! Transpose the cube that it already owns
+!  write(*,*) 'grid ', ugrid, grid 
   plband = bandPL(myid)
   yourid = myid
   do iband = sband,eband
     jband = iband
     jminR = max(planelim(grid,1,  myid),jlim(1,grid,jband)+1)
     jmaxR = min(planelim(grid,2,  myid),jlim(2,grid,jband)-1)
+!    if (myid == 3) then
+!      write(*,*) 'j before ', myid, iband, jminR, jmaxR
+!    end if 
     if (jminR==Ny(grid,plband-1)+1 .and. jmaxR>=jminR) then
       jminR = jminR-1
     end if
     if (jmaxR==Ny(grid,plband  )   .and. jmaxR>=jminR) then
       jmaxR = jmaxR+1
     end if
+!    if (myid == 1) then
+!      write(*,*) 'j after ', myid, iband, jminR, jmaxR
+!    end if 
     do j = jminR,jmaxR
       do column = 1,columns_num(jband,yourid)
         i = columns_i(column,jband,yourid)
         k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
+!        if (myid == 2 ) then
+!          write(*,*) 'id,ba,col,i,k,j ', myid, iband, column, i, k, j
+!         write(*,*) 'myid, iband, plband, col, -dk ', myid, iband,bandPL(myid),column, - dk(column,jband,yourid,bandPL(myid))
+!        end if 
         xPL(2*i+1,k,j) = dreal(x(jband)%f(j,column))
         xPL(2*i+2,k,j) = dimag(x(jband)%f(j,column))
       end do
     end do
+!  if (myid == 0) then
+!  write(*,*) myid, iband, igal, kgal, jminR, jmaxR  
+!  do i = 1, igal-1, 2
+!    do k = 1, kgal
+!      do j = jminR, jmaxR 
+!          write(*,*) i, k, j, xPL(i,k,j), xPL(i+1,k,j)
+!      end do 
+!    end do 
+!  end do 
+!  end if 
   end do
 
   do inode = 1,pnodes-1
     yourid = ieor(myid,inode)
+!    if (myid == 3) then
+!      write(*,*) 'myid, yourid, igal, kgal ', myid, yourid, igal,kgal
+!    end if 
     if (yourid<np) then
       do iband = sband,eband
         !jband=crossband(iband,yourid)
@@ -871,12 +895,20 @@ subroutine modes_to_planes_UVP (xPL,x,grid,myid,status,ierr)
         if (jmaxR==Ny(grid,nband)) then
           jmaxR = jmaxR+1
         end if
+!        if (myid == 0) then
+!          write(*,*) 'jS', iband, yourid, jminS, jmaxs
+!          write(*,*) 'jR', iband, myid, jminR, jmaxR
+!        end if 
         allocate(buffS(jminS:jmaxS,columns_num(iband,  myid)))
         allocate(buffR(jminR:jmaxR,columns_num(jband,yourid)))
         msizeS = 2*(columns_num(iband,  myid)*(jmaxS-jminS+1))  ! 2 times because it's complex
         msizeR = 2*(columns_num(jband,yourid)*(jmaxR-jminR+1))
         msizeS = max(msizeS,0)
         msizeR = max(msizeR,0)
+!        if (myid == 0) then
+!          write(*,*) 'mS', iband, myid, msizeS
+!          write(*,*) 'mR', iband, yourid, msizeR
+!        end if 
 
         do j = jminS,jmaxS
           do column = 1,columns_num(iband,myid)
@@ -892,10 +924,24 @@ subroutine modes_to_planes_UVP (xPL,x,grid,myid,status,ierr)
           do column = 1,columns_num(jband,yourid)
             i = columns_i(column,jband,yourid)
             k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
+!        if (myid == 3 ) then
+!          write(*,*) 'ba,col,i,k,j,dk ', iband, column, i, k, j, - dk(column,jband,yourid,bandPL(myid))
+!          write(*,*) 'yourid, iband, plband, col, -dk ', yourid, iband,bandPL(myid),column, - dk(column,jband,yourid,bandPL(myid))
+!        end if 
             xPL(2*i+1,k,j) = dreal(buffR(j,column))
             xPL(2*i+2,k,j) = dimag(buffR(j,column))
           end do
         end do
+!  if (myid == 3 .and. yourid == 0) then
+!  write(*,*) myid, yourid, iband, igal, kgal, jminR, jmaxR  
+!  do i = 1, igal-1, 2
+!    do k = 1, kgal
+!j = 16!      do j = jminR, jmaxR 
+!          write(*,*) i, k, j, xPL(i,k,j), xPL(i+1,k,j)
+!      end do 
+!    end do 
+!  end do 
+!  end if 
 
         deallocate(buffR,buffS)
 
@@ -1703,6 +1749,7 @@ subroutine planes_to_modes_UVP (x,xPL,grid,myid,status,ierr)
 
   ! Loop for itself
   ! Transpose the cube that it already owns
+  write(*,*) 'grid', ugrid, grid 
   plband = bandPL(myid) ! Return the band (phys) the proc works at
   do iband = sband,eband
     jminR = max(limPL_excw(grid,1,myid),jlim(1,grid,iband)+1)  ! Select the planes to transpose 
