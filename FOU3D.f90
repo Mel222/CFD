@@ -1749,28 +1749,42 @@ subroutine planes_to_modes_UVP (x,xPL,grid,myid,status,ierr)
 
   ! Loop for itself
   ! Transpose the cube that it already owns
-  write(*,*) 'grid', ugrid, grid 
+!  write(*,*) 'grid', ugrid, grid 
   plband = bandPL(myid) ! Return the band (phys) the proc works at
   do iband = sband,eband
     jminR = max(limPL_excw(grid,1,myid),jlim(1,grid,iband)+1)  ! Select the planes to transpose 
     jmaxR = min(limPL_excw(grid,2,myid),jlim(2,grid,iband)-1)
+!    if (myid == 3) then
+!      write(*,*) 'j before ', myid, iband, jminR, jmaxR
+!    end if
     if (jminR==Ny(grid,plband-1)+1 .and. jmaxR>=jminR) then   ! Special cases: interfaces
       jminR = jminR-1
     end if
     if (jmaxR==Ny(grid,plband  )   .and. jmaxR>=jminR) then
       jmaxR = jmaxR+1
     end if
+!    if (myid == 0) then
+!      write(*,*) 'j after ', myid, iband, jminR, jmaxR
+!    end if
     do j = jminR,jmaxR
       do column = 1,columns_num(iband,myid)
         i = columns_i(column,iband,myid)
         k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
         x(iband)%f(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j)) ! Transposition: Reordering from XZY to YC
+!        if (myid == 3 ) then
+!          write(*,*) 'ba,col,i,k,j,-dk',iband, column, i, k, j,-dk(column,iband,myid,bandPL(myid))
+!          write(*,*) 'j,col,x', j, column, x(iband)%f(j,column) 
+!         write(*,*) 'myid, iband, plband, col, -dk ', myid, iband,bandPL(myid),column, - dk(column,jband,yourid,bandPL(myid))
+!        end if
       end do
     end do
   end do
 
   do inode = 1,pnodes-1
     yourid = ieor(myid,inode)   ! XOR. It's used to pair procs 1-to-1
+    if (myid == 3) then
+      write(*,*) 'myid, yourid, igal, kgal ', myid, yourid, igal,kgal
+    end if
     if (yourid<np) then
       do iband = sband,eband
         !jband = crossband(iband,yourid)
@@ -1792,6 +1806,10 @@ subroutine planes_to_modes_UVP (x,xPL,grid,myid,status,ierr)
         if (jmaxR==Ny(grid,nband)) then
           jmaxR=jmaxR+1
         end if
+!        if (myid == 0) then
+!          write(*,*) 'jS', iband, myid, jminS, jmaxs
+!          write(*,*) 'jR', iband, yourid, jminR, jmaxR
+!        end if
         allocate(buffS(jminS:jmaxS,columns_num(jband,yourid)))
         allocate(buffR(jminR:jmaxR,columns_num(iband,  myid)))
         msizeS = 2*(columns_num(jband,yourid)*(jmaxS-jminS+1))     ! Size of the data to be SENDER (times 2, because it is complex)
@@ -1811,6 +1829,9 @@ subroutine planes_to_modes_UVP (x,xPL,grid,myid,status,ierr)
 &                         MPI_COMM_WORLD,status,ierr)
         do j=jminR,jmaxR
           do column = 1,columns_num(iband,myid)
+            if (myid == 3 ) then 
+              write(*,*) 'myid, yourid, iband, col, j', myid, yourid, iband, column, j
+            end if
             x(iband)%f(j,column) = buffR(j,column)                         ! Store the data received
           end do
         end do
