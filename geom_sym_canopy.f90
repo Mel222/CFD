@@ -48,7 +48,7 @@ subroutine boundary_canopies
   real(8), allocatable :: test_circ(:,:), list_ib_f_xz(:,:) 
   logical :: rig, lef, top, bot
   integer :: interpp(4)
-  real(8) :: weicoef(3), zbound, xbound, circ
+  real(8) :: weicoef(2), zbound, xbound, circ
 
   
   ! Check that the number of grid points in x and z is a multiple of the number of tiles 
@@ -116,7 +116,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
   allocate(test_circ(0:dstx+1,0:dstx+1))
   allocate(list_ib_s_xz(2, dstx*dstx)) ! Too big but doesnt matter MEL
-  allocate(list_ib_f_xz(11,dstx*dstx))
+  allocate(list_ib_f_xz(10,dstx*dstx))
 
   do k_ele = 0, dstx+1
     do i_ele = 0, dstx+1
@@ -155,21 +155,12 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
           list_ib_f_xz(4, nlist_f_xz) = interpp(1)   ! k of fluid point 2
           list_ib_f_xz(5, nlist_f_xz) = interpp(4)   ! i of fluid point 3
           list_ib_f_xz(6, nlist_f_xz) = interpp(3)   ! k of fluid point 3
-          list_ib_f_xz(7, nlist_f_xz) = weicoef(1) ! weighting of boundary point 1
-          list_ib_f_xz(8, nlist_f_xz) = weicoef(2) ! weighting of fluid point 2
-          list_ib_f_xz(9, nlist_f_xz) = weicoef(3) ! weighting of fluid point 3
-          list_ib_f_xz(10, nlist_f_xz) = xbound ! i of circular boundary point
-          list_ib_f_xz(11, nlist_f_xz) = zbound ! k of circular boundary point
+!          list_ib_f_xz(11, nlist_f_xz) = weicoef(3) ! weighting of boundary point 1 if v is non-zero
+          list_ib_f_xz(7, nlist_f_xz) = weicoef(1) ! weighting of fluid point 2
+          list_ib_f_xz(8, nlist_f_xz) = weicoef(2) ! weighting of fluid point 3
+          list_ib_f_xz(9, nlist_f_xz) = xbound ! i of circular boundary point
+          list_ib_f_xz(10, nlist_f_xz) = zbound ! k of circular boundary point
 
-!          test_circ(2 ,k_ele,i_ele) = interpp(1)   ! k of fluid point 2
-!          test_circ(3 ,k_ele,i_ele) = interpp(2)   ! j of fluid point 2
-!          test_circ(4 ,k_ele,i_ele) = interpp(3)   ! k of fluid point 3
-!          test_circ(5 ,k_ele,i_ele) = interpp(4)   ! j of fluid point 3
-!          test_circ(6 ,k_ele,i_ele) = weicoef(1) ! weighting of boundary point 1
-!          test_circ(7 ,k_ele,i_ele) = weicoef(2) ! weighting of fluid point 2
-!          test_circ(8 ,k_ele,i_ele) = weicoef(3) ! weighting of fluid point 3
-!          test_circ(9 ,k_ele,i_ele) = zbound     ! z coord of boundary point 1
-!          test_circ(10,k_ele,i_ele) = xbound     ! y coord of boundary point 1
 !write(*,*) 'forcing i, j =', i_ele, k_ele
 !write(*,*) 'fluid2  i, j =', interpp(2),interpp(1)
 !write(*,*) 'fluid3  i, j =', interpp(4),interpp(3)
@@ -215,10 +206,10 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
   allocate(list_ib_s_bot(  3,nlist_ib_s_bot,2))
   allocate(list_ib_f_bot(  9,nlist_ib_f_bot,2))
-  allocate(list_ib_f_w_bot(3,nlist_ib_f_bot,2))
+  allocate(list_ib_f_w_bot(2,nlist_ib_f_bot,2))
   allocate(list_ib_s_top(  3,nlist_ib_s_bot,2))
   allocate(list_ib_f_top(  9,nlist_ib_f_bot,2))
-  allocate(list_ib_f_w_top(3,nlist_ib_f_bot,2))
+  allocate(list_ib_f_w_top(2,nlist_ib_f_bot,2))
 
 ! FIRST STEM BOTTOM VGRID
   ilist = 0
@@ -259,7 +250,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       list_ib_f_w_bot(1, ilist, vgrid) =  list_ib_f_xz(7, ilist_xz) 
       list_ib_f_w_bot(2, ilist, vgrid) =  list_ib_f_xz(8, ilist_xz) 
-      list_ib_f_w_bot(3, ilist, vgrid) =  list_ib_f_xz(9, ilist_xz)
 
     end do
   end do
@@ -308,7 +298,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       list_ib_f_w_bot(1, ilist, ugrid) =  list_ib_f_xz(7, ilist_xz) 
       list_ib_f_w_bot(2, ilist, ugrid) =  list_ib_f_xz(8, ilist_xz) 
-      list_ib_f_w_bot(3, ilist, ugrid) =  list_ib_f_xz(9, ilist_xz)
 
     end do
   end do
@@ -357,7 +346,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       list_ib_f_w_top(1, ilist, vgrid) =  list_ib_f_xz(7, ilist_xz) 
       list_ib_f_w_top(2, ilist, vgrid) =  list_ib_f_xz(8, ilist_xz) 
-      list_ib_f_w_top(3, ilist, vgrid) =  list_ib_f_xz(9, ilist_xz)
 
     end do
   end do
@@ -406,7 +394,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       list_ib_f_w_top(1, ilist, ugrid) =  list_ib_f_xz(7, ilist_xz) 
       list_ib_f_w_top(2, ilist, ugrid) =  list_ib_f_xz(8, ilist_xz) 
-      list_ib_f_w_top(3, ilist, ugrid) =  list_ib_f_xz(9, ilist_xz)
 
     end do
   end do
@@ -464,7 +451,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
           list_ib_f_w_bot(1,ilist+shift,grid) = list_ib_f_w_bot(1,ilist,grid)
           list_ib_f_w_bot(2,ilist+shift,grid) = list_ib_f_w_bot(2,ilist,grid)
-          list_ib_f_w_bot(3,ilist+shift,grid) = list_ib_f_w_bot(3,ilist,grid)
  
           list_ib_f_top(1,ilist+shift,grid) = list_ib_f_top(1,ilist,grid) + dnx*(ix-1)  ! i 
 !          list_ib_f_top(2,ilist+shift,grid) = list_ib_f_top(2,ilist,grid) + dnz*(iz-1)  ! k 
@@ -485,7 +471,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
           list_ib_f_w_top(1,ilist+shift,grid) = list_ib_f_w_top(1,ilist,grid)                
           list_ib_f_w_top(2,ilist+shift,grid) = list_ib_f_w_top(2,ilist,grid)                
-          list_ib_f_w_top(3,ilist+shift,grid) = list_ib_f_w_top(3,ilist,grid)                
         end do
       end do
     end do
@@ -530,7 +515,7 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, gr
   integer :: n_segm, segm, min_loc(1)
   real(8) :: radius, min_dist
   real(8) :: zbound, xbound, n_z, n_x
-  real(8) :: weicoef(3), denominator 
+  real(8) :: weicoef(2), denominator 
 
   real(8), allocatable :: dist(:)
 
@@ -618,11 +603,11 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, gr
 
   denominator=  (xbound*z2 - x2*zbound - xbound*z3 + x3*zbound + x2*z3 - x3*z2)
 
-  weicoef(1) =  (x2*z3 - x3*z2 - x2*k_ele + i_ele*z2 + x3*k_ele - i_ele*z3)/denominator
+!  weicoef(1) =  (x2*z3 - x3*z2 - x2*k_ele + i_ele*z2 + x3*k_ele - i_ele*z3)/denominator ! weighting for boundary point if v is non-zero
 
-  weicoef(2) = -(xbound*z3 - x3*zbound - xbound*k_ele + i_ele*zbound + x3*k_ele - i_ele*z3)/denominator
+  weicoef(1) = -(xbound*z3 - x3*zbound - xbound*k_ele + i_ele*zbound + x3*k_ele - i_ele*z3)/denominator
 
-  weicoef(3) =  (xbound*z2 - x2*zbound - xbound*k_ele + i_ele*zbound + x2*k_ele - i_ele*z2)/denominator 
+  weicoef(2) =  (xbound*z2 - x2*zbound - xbound*k_ele + i_ele*zbound + x2*k_ele - i_ele*z2)/denominator 
 
   deallocate(dist)
 

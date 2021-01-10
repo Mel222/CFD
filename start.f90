@@ -1089,10 +1089,10 @@ subroutine getbounds(myid,status,ierr)
       read(10) Ngal,nlist_ib_s_bot,nlist_ib_f_bot,nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
       allocate(list_ib_s_bot(  3,nlist_ib_s_bot,2))
       allocate(list_ib_f_bot(  9,nlist_ib_f_bot,2))
-      allocate(list_ib_f_w_bot(3,nlist_ib_f_bot,2))
+      allocate(list_ib_f_w_bot(2,nlist_ib_f_bot,2))
       allocate(list_ib_s_top(  3,nlist_ib_s_bot,2))
       allocate(list_ib_f_top(  9,nlist_ib_f_bot,2))
-      allocate(list_ib_f_w_top(3,nlist_ib_f_bot,2))
+      allocate(list_ib_f_w_top(2,nlist_ib_f_bot,2))
       read(10) list_ib_s_bot, list_ib_s_top  
       read(10) list_ib_f_bot, list_ib_f_top
       read(10) list_ib_f_w_bot, list_ib_f_w_top 
@@ -1157,7 +1157,7 @@ subroutine getbounds(myid,status,ierr)
         ! The list is reordered and stored in a local list
         allocate(s_list_ib(3,nlist_ib_s(ugrid),2))
         allocate(f_list_ib(9,nlist_ib_f(ugrid),2))
-        allocate(w_list_ib(3,nlist_ib_f(ugrid),2))
+        allocate(w_list_ib(2,nlist_ib_f(ugrid),2))
         ! ugrid solid points bottom 
         do ilist2 = 1,nlist_ib_s(ugrid)
           ilist = list_pointer_s(ilist2,ugrid)
@@ -1186,9 +1186,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib(8,ilist2,ugrid) = list_ib_f_bot(8,ilist,ugrid) ! k3
           f_list_ib(9,ilist2,ugrid) = list_ib_f_bot(9,ilist,ugrid) ! j3
 
-          w_list_ib(1,ilist2,ugrid) = list_ib_f_w_bot(1,ilist,ugrid) ! w1
-          w_list_ib(2,ilist2,ugrid) = list_ib_f_w_bot(2,ilist,ugrid) ! w2
-          w_list_ib(3,ilist2,ugrid) = list_ib_f_w_bot(3,ilist,ugrid) ! w3
+          w_list_ib(1,ilist2,ugrid) = list_ib_f_w_bot(1,ilist,ugrid) ! w2
+          w_list_ib(2,ilist2,ugrid) = list_ib_f_w_bot(2,ilist,ugrid) ! w3
         end do
         ! vgrid forcing points bottom 
         do ilist2 = 1,nlist_ib_f(vgrid)
@@ -1203,9 +1202,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib(8,ilist2,vgrid) = list_ib_f_bot(8,ilist,vgrid) ! k3
           f_list_ib(9,ilist2,vgrid) = list_ib_f_bot(9,ilist,vgrid) ! j3
 
-          w_list_ib(1,ilist2,vgrid) = list_ib_f_w_bot(1,ilist,vgrid) ! w1
-          w_list_ib(2,ilist2,vgrid) = list_ib_f_w_bot(2,ilist,vgrid) ! w2
-          w_list_ib(3,ilist2,vgrid) = list_ib_f_w_bot(3,ilist,vgrid) ! w3
+          w_list_ib(1,ilist2,vgrid) = list_ib_f_w_bot(1,ilist,vgrid) ! w2
+          w_list_ib(2,ilist2,vgrid) = list_ib_f_w_bot(2,ilist,vgrid) ! w3
         end do
         deallocate(list_pointer_f)
         ! Send info to the corresponding procs
@@ -1234,7 +1232,7 @@ subroutine getbounds(myid,status,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
         call MPI_SEND(s_list_ib,3*nlist_ib_s(ugrid)*2,MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(f_list_ib,9*nlist_ib_f(ugrid)*2,MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_REAL8,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(w_list_ib,2*nlist_ib_f(ugrid)*2,MPI_REAL8,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
         deallocate(s_list_ib, f_list_ib, w_list_ib)
       end do
 
@@ -1281,7 +1279,7 @@ subroutine getbounds(myid,status,ierr)
         ! The list is reordered and stored in a local list
         allocate(s_list_ib(3,nlist_ib_s(ugrid),2))
         allocate(f_list_ib(9,nlist_ib_f(ugrid),2))
-        allocate(w_list_ib(3,nlist_ib_f(ugrid),2))
+        allocate(w_list_ib(2,nlist_ib_f(ugrid),2))
         ! ugrid solid points top
         do ilist2 = 1,nlist_ib_s(ugrid)
           ilist = list_pointer_s(ilist2,ugrid)
@@ -1310,9 +1308,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib(8,ilist2,ugrid) = list_ib_f_top(8,ilist,ugrid)  ! k3
           f_list_ib(9,ilist2,ugrid) = list_ib_f_top(9,ilist,ugrid)  ! j3
 
-          w_list_ib(1,ilist2,ugrid) = list_ib_f_w_top(1,ilist,ugrid)  ! w1
-          w_list_ib(2,ilist2,ugrid) = list_ib_f_w_top(2,ilist,ugrid)  ! w2
-          w_list_ib(3,ilist2,ugrid) = list_ib_f_w_top(3,ilist,ugrid)  ! w3
+          w_list_ib(1,ilist2,ugrid) = list_ib_f_w_top(1,ilist,ugrid)  ! w2
+          w_list_ib(2,ilist2,ugrid) = list_ib_f_w_top(2,ilist,ugrid)  ! w3
         end do
         ! vgrid forcing points top
         do ilist2 = 1,nlist_ib_f(vgrid)
@@ -1327,9 +1324,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib(8,ilist2,vgrid) = list_ib_f_top(8,ilist,vgrid)  ! k3
           f_list_ib(9,ilist2,vgrid) = list_ib_f_top(9,ilist,vgrid)  ! j3
 
-          w_list_ib(1,ilist2,vgrid) = list_ib_f_w_top(1,ilist,vgrid)  ! w1
-          w_list_ib(2,ilist2,vgrid) = list_ib_f_w_top(2,ilist,vgrid)  ! w2
-          w_list_ib(3,ilist2,vgrid) = list_ib_f_w_top(3,ilist,vgrid)  ! w3
+          w_list_ib(1,ilist2,vgrid) = list_ib_f_w_top(1,ilist,vgrid)  ! w2
+          w_list_ib(2,ilist2,vgrid) = list_ib_f_w_top(2,ilist,vgrid)  ! w3
         end do
         deallocate(list_pointer_f)
         ! The list with 'imm boundary points you have to handle with' is sent to every proc
@@ -1356,7 +1352,7 @@ subroutine getbounds(myid,status,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
         call MPI_SEND(s_list_ib,3*nlist_ib_s(ugrid)*2,MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(f_list_ib,9*nlist_ib_f(ugrid)*2,MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_REAL8  ,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(w_list_ib,2*nlist_ib_f(ugrid)*2,MPI_REAL8  ,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
 
 !        write(*,*) 'myid', myid
 !        write(*,*) 'iproc', iproc
@@ -1408,7 +1404,7 @@ subroutine getbounds(myid,status,ierr)
 
       allocate(s_list_ib(3,nlist_ib_s(ugrid),2))
       allocate(f_list_ib(9,nlist_ib_f(ugrid),2))
-      allocate(w_list_ib(3,nlist_ib_f(ugrid),2))
+      allocate(w_list_ib(2,nlist_ib_f(ugrid),2))
       ! ugrid solid points bottom  
       do ilist2 = 1,nlist_ib_s(ugrid)
         ilist = list_pointer_s(ilist2,ugrid)
@@ -1436,9 +1432,8 @@ subroutine getbounds(myid,status,ierr)
         f_list_ib(8,ilist2,ugrid) = list_ib_f_bot(8,ilist,ugrid)  ! k3
         f_list_ib(9,ilist2,ugrid) = list_ib_f_bot(9,ilist,ugrid)  ! j3
 
-        w_list_ib(1,ilist2,ugrid) = list_ib_f_w_bot(1,ilist,ugrid)  ! w1
-        w_list_ib(2,ilist2,ugrid) = list_ib_f_w_bot(2,ilist,ugrid)  ! w2
-        w_list_ib(3,ilist2,ugrid) = list_ib_f_w_bot(3,ilist,ugrid)  ! w3
+        w_list_ib(1,ilist2,ugrid) = list_ib_f_w_bot(1,ilist,ugrid)  ! w2
+        w_list_ib(2,ilist2,ugrid) = list_ib_f_w_bot(2,ilist,ugrid)  ! w3
       end do
       ! vgrid forcing points bottom
       do ilist2 = 1,nlist_ib_f(vgrid)
@@ -1453,9 +1448,8 @@ subroutine getbounds(myid,status,ierr)
         f_list_ib(8,ilist2,vgrid) = list_ib_f_bot(8,ilist,vgrid)  ! k3
         f_list_ib(9,ilist2,vgrid) = list_ib_f_bot(9,ilist,vgrid)  ! j3
 
-        w_list_ib(1,ilist2,vgrid) = list_ib_f_w_bot(1,ilist,vgrid)  ! w1
-        w_list_ib(2,ilist2,vgrid) = list_ib_f_w_bot(2,ilist,vgrid)  ! w2
-        w_list_ib(3,ilist2,vgrid) = list_ib_f_w_bot(3,ilist,vgrid)  ! w3
+        w_list_ib(1,ilist2,vgrid) = list_ib_f_w_bot(1,ilist,vgrid)  ! w2
+        w_list_ib(2,ilist2,vgrid) = list_ib_f_w_bot(2,ilist,vgrid)  ! w3
       end do
       deallocate(list_pointer_s)
       deallocate(list_pointer_f)
@@ -1488,11 +1482,11 @@ subroutine getbounds(myid,status,ierr)
 
       allocate(s_list_ib(3,nlist_ib_s(ugrid),2))
       allocate(f_list_ib(9,nlist_ib_f(ugrid),2))
-      allocate(w_list_ib(3,nlist_ib_f(ugrid),2))
+      allocate(w_list_ib(2,nlist_ib_f(ugrid),2))
       ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
       call MPI_RECV  (s_list_ib,3*nlist_ib_s(ugrid)*2,MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
       call MPI_RECV  (f_list_ib,9*nlist_ib_f(ugrid)*2,MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (w_list_ib,3*nlist_ib_f(ugrid)*2,MPI_REAL8  ,0,24000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (w_list_ib,2*nlist_ib_f(ugrid)*2,MPI_REAL8  ,0,24000+myid,MPI_COMM_WORLD,status,ierr)
 !if (myid == 7) then
 !  write(*,*) 'myid', myid
 !  write(*,*) 'nlist', nlist_ib_f(2)
