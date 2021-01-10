@@ -1067,7 +1067,7 @@ subroutine getbounds(myid,status,ierr)
       !  ny11, ny21, ny12 and ny22 stores the y-limits of the imm boundaries. From bottom to top.
       !  A_ib1 and A_ib2 stores the weights of the points in the imm boundaries.
       write(*,*) 'Creating geometry'
-      call boundary_canopies
+      call boundary_circ_rough
       write(*,*) 'Attention, nlist_ib(ugrid) must be equal to nlist_ib(vgrid)'
   
       open(10,file=boundfname,form='unformatted',access='stream')

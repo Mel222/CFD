@@ -1,4 +1,4 @@
-subroutine boundary_canopies
+subroutine boundary_circ_rough
 ! This function creates the geometry- tall, sparse filaments.
 ! It defines lists with the points at the forcing points (list_ib1),
 !   
