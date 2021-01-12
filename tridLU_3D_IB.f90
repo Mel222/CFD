@@ -505,9 +505,9 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
      i = s_list_ib(1,ilist,grid)
      k = s_list_ib(2,ilist,grid)
      j = s_list_ib(3,ilist,grid)
-if(myid == 0) then 
-  write(*,*) i,',', k,',', j,';'
-end if   
+!if(myid == 0) then 
+!  write(*,*) i,',', k,',', j,';'
+!end if   
 
      rhsuIB(i,k,j) = 0d0
      
@@ -538,12 +538,12 @@ end if
 !  write(*,*) 'V w  ', w2, w3 
 !  write(*,*) 'V_f  ', v_f, u2PL(i2,k2,j2), u2PL(i3,k3,j3)
 !end if  
-!if(myid == 3) then 
-!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'
+if(myid == 3 ) then 
+  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'
 !   write(*,*) f_list_ib(:,:,grid)  
 !   write(*,*) nlist_ib_f(grid)  
 !   write(*,*) w2, w3  
-!end if   
+end if   
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
 
