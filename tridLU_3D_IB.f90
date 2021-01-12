@@ -98,8 +98,9 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
     enddo
   enddo
   
-
-
+! if(myid == 0) then 
+!   write(*,*) 'rhsu', rhsu(2)%f(jlim(1,grid,2)+1,1)
+! end if 
  call immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
 ! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 ! stop 
@@ -183,7 +184,9 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
       enddo
     enddo
   enddo
-  
+! if(myid == 0) then 
+!   write(*,*) 'rhsu', rhsu(2)%f(jlim(1,grid,2)+1,1)
+! end if 
  call immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
 
 
@@ -203,6 +206,9 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
   deallocate(axz)
   deallocate(ay)
 
+! if(myid == 0) then 
+!   write(*,*) 'rhsu', rhsu(2)%f(jlim(1,grid,2)+1,1)
+! end if 
 end subroutine
 
 
@@ -403,6 +409,9 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
      k = s_list_ib(2,ilist,grid)
      j = s_list_ib(3,ilist,grid)
 
+!if(myid == 3) then 
+!  write(*,*) i,',', k,',', j,';'
+!end if   
 
      rhsuIB(i,k,j) = 0d0
    
@@ -427,6 +436,18 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
      w3= w_list_ib(2,ilist,grid)
 
      v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
+!if (myid == 0 .and. i == 3 .and. k == 3 .and. j == -2 ) then 
+!  write(*,*) 
+!  write(*,*) 'U ijk', i, k, j, i2, k2, j2, i3, k3, j3 
+!  write(*,*) 'U w  ', w2, w3 
+!  write(*,*) 'U_f  ', v_f, u1PL(i2,k2,j2), u1PL(i3,k3,j3)
+!end if     
+!if(myid == 3) then 
+!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'
+!   write(*,*) f_list_ib(:,:,grid)  
+!   write(*,*) nlist_ib_f(grid)  
+!   write(*,*) w2, w3  
+!end if   
 
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
@@ -484,6 +505,9 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
      i = s_list_ib(1,ilist,grid)
      k = s_list_ib(2,ilist,grid)
      j = s_list_ib(3,ilist,grid)
+if(myid == 0) then 
+  write(*,*) i,',', k,',', j,';'
+end if   
 
      rhsuIB(i,k,j) = 0d0
      
@@ -508,7 +532,18 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
      w3= w_list_ib(2,ilist,grid)
 
      v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
-
+!if (myid == 0 .and. i == 3 .and. k == 3 .and. j == -2 ) then
+!  write(*,*)  
+!  write(*,*) 'V ijk', i, k, j, i2, k2, j2, i3, k3, j3 
+!  write(*,*) 'V w  ', w2, w3 
+!  write(*,*) 'V_f  ', v_f, u2PL(i2,k2,j2), u2PL(i3,k3,j3)
+!end if  
+!if(myid == 3) then 
+!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'
+!   write(*,*) f_list_ib(:,:,grid)  
+!   write(*,*) nlist_ib_f(grid)  
+!   write(*,*) w2, w3  
+!end if   
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
 
