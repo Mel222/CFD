@@ -1085,7 +1085,7 @@ subroutine getbounds(myid,status,ierr)
       read(10)Ngal,nlist_ib_s_bot_u,nlist_ib_s_bot_v,nlist_ib_f_bot_u,nlist_ib_f_bot_v,&
 & ny_columnv, ny_columnu, &
 & nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
-      read(10)
+      read(10) 
 
       allocate(list_ib_s_bot_u(3,nlist_ib_s_bot_u), list_ib_s_top_u(3,nlist_ib_s_bot_u))
       allocate(list_ib_s_bot_v(3,nlist_ib_s_bot_v), list_ib_s_top_v(3,nlist_ib_s_bot_v))
@@ -1541,11 +1541,11 @@ subroutine getbounds(myid,status,ierr)
       allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
       ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
       call MPI_RECV  (s_list_ib_u,3*nlist_ib_s(ugrid),MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (s_list_ib_v,3*nlist_ib_s(vgrid),MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8  ,0,24000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (w_list_ib_v,2*nlist_ib_f(vgrid),MPI_REAL8  ,0,24000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (s_list_ib_v,3*nlist_ib_s(vgrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,0,24000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,0,25000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8  ,0,26000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (w_list_ib_v,2*nlist_ib_f(vgrid),MPI_REAL8  ,0,27000+myid,MPI_COMM_WORLD,status,ierr)
 !if (myid == 7) then
 !  write(*,*) 'myid', myid
 !  write(*,*) 'nlist', nlist_ib_f(2)
