@@ -100,7 +100,7 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
   
 
 
- call immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
+ call immersed_boundaries_U(u,rhsu,Lu,grid,myid)
 ! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 ! stop 
 ! Mel's version
@@ -184,7 +184,7 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
     enddo
   enddo
   
- call immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
+ call immersed_boundaries_V(u,rhsu,Lu,grid,myid)
 
 
 ! -Original   
@@ -245,27 +245,27 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
      call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
    enddo
    do ilist = 1,nlist_ib_s(grid)
-     i = s_list_ib(1,ilist,grid)
-     k = s_list_ib(2,ilist,grid)
-     j = s_list_ib(3,ilist,grid)
+     i = s_list_ib_u(1,ilist)
+     k = s_list_ib_u(2,ilist)
+     j = s_list_ib_u(3,ilist)
 
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)   
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
-     i = f_list_ib(1,ilist,grid)
-     k = f_list_ib(2,ilist,grid)
-     j = f_list_ib(3,ilist,grid)
-     i2= f_list_ib(4,ilist,grid)
-     k2= f_list_ib(5,ilist,grid)
-     j2= f_list_ib(6,ilist,grid)
-     i3= f_list_ib(7,ilist,grid)
-     k3= f_list_ib(8,ilist,grid)
-     j3= f_list_ib(9,ilist,grid)
+     i = f_list_ib_u(1,ilist)
+     k = f_list_ib_u(2,ilist)
+     j = f_list_ib_u(3,ilist)
+     i2= f_list_ib_u(4,ilist)
+     k2= f_list_ib_u(5,ilist)
+     j2= f_list_ib_u(6,ilist)
+     i3= f_list_ib_u(7,ilist)
+     k3= f_list_ib_u(8,ilist)
+     j3= f_list_ib_u(9,ilist)
      
 !     w1= w_list_ib(3,ilist,grid) ! weighting if boundary v is non-zero
-     w2= w_list_ib(1,ilist,grid)
-     w3= w_list_ib(2,ilist,grid)
+     w2= w_list_ib_u(1,ilist)
+     w3= w_list_ib_u(2,ilist)
 
      v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
 
@@ -322,27 +322,27 @@ subroutine immersed_boundaries_V(u,rhsu,Lu,grid,myid)
    enddo
 
    do ilist = 1,nlist_ib_s(grid)
-     i = s_list_ib(1,ilist,grid)
-     k = s_list_ib(2,ilist,grid)
-     j = s_list_ib(3,ilist,grid)
+     i = s_list_ib_v(1,ilist)
+     k = s_list_ib_v(2,ilist)
+     j = s_list_ib_v(3,ilist)
 
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
-     i = f_list_ib(1,ilist,grid)
-     k = f_list_ib(2,ilist,grid)
-     j = f_list_ib(3,ilist,grid)
-     i2= f_list_ib(4,ilist,grid)
-     k2= f_list_ib(5,ilist,grid)
-     j2= f_list_ib(6,ilist,grid)
-     i3= f_list_ib(7,ilist,grid)
-     k3= f_list_ib(8,ilist,grid)
-     j3= f_list_ib(9,ilist,grid)
+     i = f_list_ib_v(1,ilist)
+     k = f_list_ib_v(2,ilist)
+     j = f_list_ib_v(3,ilist)
+     i2= f_list_ib_v(4,ilist)
+     k2= f_list_ib_v(5,ilist)
+     j2= f_list_ib_v(6,ilist)
+     i3= f_list_ib_v(7,ilist)
+     k3= f_list_ib_v(8,ilist)
+     j3= f_list_ib_v(9,ilist)
 
 !     w1= w_list_ib(3,ilist,grid) ! weighting if boundary v is non-zero
-     w2= w_list_ib(1,ilist,grid)
-     w3= w_list_ib(2,ilist,grid)
+     w2= w_list_ib_v(1,ilist)
+     w3= w_list_ib_v(2,ilist)
 
      v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
 
