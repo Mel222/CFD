@@ -1033,11 +1033,19 @@ subroutine getbounds(myid,status,ierr)
   integer status(MPI_STATUS_SIZE),ierr,myid
 
   integer j,iproc,ilist,ilist2
-  integer nlist_ib_s_bot, nlist_ib_f_bot
+  integer nlist_ib_s_bot, nlist_ib_f_bot ! DELETE
+  integer nlist_ib_s_bot_u, nlist_ib_s_bot_v, nlist_ib_f_bot_u, nlist_ib_f_bot_v
+  integer ny_columnv, ny_columnu ! DELETE
   integer, allocatable:: inputNu(:), inputNv(:)                 ! Message passing array containing input parameters
-  integer, allocatable:: list_ib_s_bot(:,:,:), list_ib_s_top(:,:,:)
-  integer, allocatable:: list_ib_f_bot(:,:,:),list_ib_f_top(:,:,:)
-  real(8), allocatable:: list_ib_f_w_bot(:,:,:),list_ib_f_w_top(:,:,:)
+  integer, allocatable:: list_ib_s_bot(:,:,:), list_ib_s_top(:,:,:) ! DELETE
+  integer, allocatable:: list_ib_f_bot(:,:,:),list_ib_f_top(:,:,:) ! DELETE
+  real(8), allocatable:: list_ib_f_w_bot(:,:,:),list_ib_f_w_top(:,:,:) ! DELETE
+  integer, allocatable:: list_ib_s_bot_u(:,:), list_ib_s_top_u(:,:)
+  integer, allocatable:: list_ib_s_bot_v(:,:), list_ib_s_top_v(:,:)
+  integer, allocatable:: list_ib_f_bot_u(:,:),list_ib_f_top_u(:,:)
+  integer, allocatable:: list_ib_f_bot_v(:,:),list_ib_f_top_v(:,:)
+  real(8), allocatable:: list_ib_f_w_bot_u(:,:),list_ib_f_w_top_u(:,:)
+  real(8), allocatable:: list_ib_f_w_bot_v(:,:),list_ib_f_w_top_v(:,:)
   integer, allocatable:: list_pointer_s(:,:), list_pointer_f(:,:)
 
   allocate(nlist_ib_s(2))
@@ -1072,17 +1080,34 @@ subroutine getbounds(myid,status,ierr)
   
       open(10,file=boundfname,form='unformatted',access='stream')
       read(10) Lx,Ly,Lz
-      read(10) Ngal,nlist_ib_s_bot,nlist_ib_f_bot,nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
-      allocate(list_ib_s_bot(  3,nlist_ib_s_bot,2))
-      allocate(list_ib_f_bot(  9,nlist_ib_f_bot,2))
-      allocate(list_ib_f_w_bot(2,nlist_ib_f_bot,2))
-      allocate(list_ib_s_top(  3,nlist_ib_s_bot,2))
-      allocate(list_ib_f_top(  9,nlist_ib_f_bot,2))
-      allocate(list_ib_f_w_top(2,nlist_ib_f_bot,2))
-      read(10) list_ib_s_bot, list_ib_s_top  
-      read(10) list_ib_f_bot, list_ib_f_top
-      read(10) list_ib_f_w_bot, list_ib_f_w_top 
+      read(10)Ngal,nlist_ib_s_bot_u,nlist_ib_s_bot_v,nlist_ib_f_bot_u,nlist_ib_f_bot_v,&
+& ny_columnv, ny_columnu, &
+& nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
+      read(10)
+
+      allocate(list_ib_s_bot_u(3,nlist_ib_s_bot_u), list_ib_s_top_u(3,nlist_ib_s_bot_u))
+      allocate(list_ib_s_bot_v(3,nlist_ib_s_bot_v), list_ib_s_top_v(3,nlist_ib_s_bot_v))
+      read(10) list_ib_s_bot_u, list_ib_s_top_u  
+      read(10) list_ib_s_bot_v, list_ib_s_top_v  
+
+      allocate(list_ib_f_bot_u(9,nlist_ib_f_bot_u), list_ib_f_top_u(9,nlist_ib_f_bot_u))
+      allocate(list_ib_f_bot_v(9,nlist_ib_f_bot_v), list_ib_f_top_v(9,nlist_ib_f_bot_v))
+      read(10) list_ib_f_bot_u, list_ib_f_top_u
+      read(10) list_ib_f_bot_v, list_ib_f_top_v
+
+      allocate(list_ib_f_w_bot_u(2,nlist_ib_f_bot_u), list_ib_f_w_top_u(2,nlist_ib_f_bot_u))
+      allocate(list_ib_f_w_bot_v(2,nlist_ib_f_bot_v), list_ib_f_w_top_v(2,nlist_ib_f_bot_v))
+      read(10) list_ib_f_w_bot_u, list_ib_f_w_top_u 
+      read(10) list_ib_f_w_bot_v, list_ib_f_w_top_v 
+
       close(10)
+
+      allocate(list_ib_s_bot(  3,nlist_ib_s_bot,2)) ! DELETE
+      allocate(list_ib_f_bot(  9,nlist_ib_f_bot,2)) ! DELETE
+      allocate(list_ib_f_w_bot(2,nlist_ib_f_bot,2)) ! DELETE
+      allocate(list_ib_s_top(  3,nlist_ib_s_bot,2)) ! DELETE
+      allocate(list_ib_f_top(  9,nlist_ib_f_bot,2)) ! DELETE
+      allocate(list_ib_f_w_top(2,nlist_ib_f_bot,2)) ! DELETE
 
       ! Tells every proc how many of their planes contain points of the immersed boundaries
       do iproc = 0,np-1
