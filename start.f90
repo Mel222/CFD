@@ -1035,7 +1035,7 @@ subroutine getbounds(myid,status,ierr)
   integer j,iproc,ilist,ilist2
   integer nlist_ib_s_bot, nlist_ib_f_bot ! DELETE
   integer nlist_ib_s_bot_u, nlist_ib_s_bot_v, nlist_ib_f_bot_u, nlist_ib_f_bot_v
-  integer ny_columnv, ny_columnu ! DELETE
+  integer ny_columnv, ny_columnu, nelements_y ! DELETE
   integer, allocatable:: inputNu(:), inputNv(:)                 ! Message passing array containing input parameters
   integer, allocatable:: list_ib_s_bot(:,:,:), list_ib_s_top(:,:,:) ! DELETE
   integer, allocatable:: list_ib_f_bot(:,:,:),list_ib_f_top(:,:,:) ! DELETE
@@ -1085,7 +1085,7 @@ subroutine getbounds(myid,status,ierr)
       read(10)Ngal,nlist_ib_s_bot_u,nlist_ib_s_bot_v,nlist_ib_f_bot_u,nlist_ib_f_bot_v,&
 & ny_columnv, ny_columnu, &
 & nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
-      read(10) 
+      read(10) nelements_y, dstz 
 
       allocate(list_ib_s_bot_u(3,nlist_ib_s_bot_u), list_ib_s_top_u(3,nlist_ib_s_bot_u))
       allocate(list_ib_s_bot_v(3,nlist_ib_s_bot_v), list_ib_s_top_v(3,nlist_ib_s_bot_v))
@@ -1125,8 +1125,9 @@ subroutine getbounds(myid,status,ierr)
           nyvIB1(iproc) = max(nyv12,planelim(vgrid,1,iproc))
           nyvIB2(iproc) = min(nyv22,planelim(vgrid,2,iproc))
         end if
+      write(*,*) 'iproc, nyuIB1, nyuIB2', iproc, nyuIB1(iproc), nyuIB2(iproc)
+      write(*,*) 'iproc, nyvIB1, nyvIB2', iproc, nyvIB1(iproc), nyvIB2(iproc)
       end do
-
       ! Prepares the information of the LOWER riblets to be sent to half of the procs
       do iproc = 1,np/2-1
         nlist_ib_s = 0

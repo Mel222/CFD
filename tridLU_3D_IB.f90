@@ -295,7 +295,7 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
    do j = jgal(grid,1)-1, jgal(grid,2)+1
      call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
    enddo
-
+ write(*,*) 'myid, nlist_s_u', myid, nlist_ib_s(grid)
    do ilist = 1,nlist_ib_s(grid)
      i = s_list_ib_u(1,ilist)
      k = s_list_ib_u(2,ilist)
@@ -304,6 +304,7 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)   
    enddo
 
+ write(*,*) 'myid, nlist_f_u', myid, nlist_ib_f(grid)
    do ilist = 1,nlist_ib_f(grid)
      i = f_list_ib_u(1,ilist)
      k = f_list_ib_u(2,ilist)
