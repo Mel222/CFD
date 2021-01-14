@@ -184,7 +184,7 @@ nextqt = floor(t*10d0)/10d0+0.1d0
       call solveP(p,psi,u1,u2,u3,div,myid)
 
       ! Correct velocity for incompressibility
-!      call v_corr(u1,u2,u3,psi,div,myid,status,ierr)
+      call v_corr(u1,u2,u3,psi,div,myid,status,ierr)
     
     end do
     
