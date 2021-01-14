@@ -584,7 +584,7 @@ subroutine four_to_phys_du(du,iband)
   integer iband
   real(8) du  (Ngal(1,iband)+2,Ngal(2,iband))
 
-  du(:,Ngal(2,iband)/2+1)=0d0
+!  du(:,Ngal(2,iband)/2+1)=0d0 ! Mel: oddball info is essential 
   
   call cft(du   ,Ngal(1,iband)+2,2,(N(1,iband)+2)/2,1,buffCal_z(iband)%b)
   call rft(du   ,Ngal(1,iband)+2,Ngal(2,iband),1,buffRal_x(iband)%b)
@@ -1652,7 +1652,8 @@ subroutine phys_to_four_du(duPL,iband)
   call rft(duPL,Ngal(1,iband)+2,Ngal(2,iband),-1,buffRal_x(iband)%b)
   call cft(duPL,Ngal(1,iband)+2,2,(N(1,iband)+2)/2,-1,buffCal_z(iband)%b)
   
-  duPL(:,Ngal(2,iband)/2+1)=0d0 !oddball advective term = 0
+!  duPL(:,Ngal(2,iband)/2+1)=0d0 !oddball advective term = 0 Mel: oddball info
+!  is essential
 
 end subroutine
 
