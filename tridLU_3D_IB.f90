@@ -185,6 +185,8 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
   enddo
   
  call immersed_boundaries_V(u,rhsu,Lu,grid,myid)
+! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+! stop 
 
 
 ! -Original   
@@ -295,35 +297,46 @@ subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
    do j = jgal(grid,1)-1, jgal(grid,2)+1
      call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
    enddo
+!if (myid == 0) then
 ! write(*,*) 'myid, nlist_s_u', myid, nlist_ib_s(grid)
+!end if
    do ilist = 1,nlist_ib_s(grid)
      i = s_list_ib_u(1,ilist)
      k = s_list_ib_u(2,ilist)
      j = s_list_ib_u(3,ilist)
 
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)   
+!if (myid == 0) then
+!  write(*,*) i,',',k ,',',j, ';'
+!  write(*,*) i, k,j, rhsuIB(i,k,j)
+!end if
    enddo
 
+!if (myid == 3) then
 ! write(*,*) 'myid, nlist_f_u', myid, nlist_ib_f(grid)
-!   do ilist = 1,nlist_ib_f(grid)
-!     i = f_list_ib_u(1,ilist)
-!     k = f_list_ib_u(2,ilist)
-!     j = f_list_ib_u(3,ilist)
-!     i2= f_list_ib_u(4,ilist)
-!     k2= f_list_ib_u(5,ilist)
-!     j2= f_list_ib_u(6,ilist)
-!     i3= f_list_ib_u(7,ilist)
-!     k3= f_list_ib_u(8,ilist)
-!     j3= f_list_ib_u(9,ilist)
+!end if
+   do ilist = 1,nlist_ib_f(grid)
+     i = f_list_ib_u(1,ilist)
+     k = f_list_ib_u(2,ilist)
+     j = f_list_ib_u(3,ilist)
+     i2= f_list_ib_u(4,ilist)
+     k2= f_list_ib_u(5,ilist)
+     j2= f_list_ib_u(6,ilist)
+     i3= f_list_ib_u(7,ilist)
+     k3= f_list_ib_u(8,ilist)
+     j3= f_list_ib_u(9,ilist)
      
 !     w1= w_list_ib(3,ilist,grid) ! weighting if boundary v is non-zero
-!     w2= w_list_ib_u(1,ilist)
-!     w3= w_list_ib_u(2,ilist)
+     w2= w_list_ib_u(1,ilist)
+     w3= w_list_ib_u(2,ilist)
 
-!     v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
+     v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
 
-!     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
-!   enddo
+     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
+!if (myid == 3) then
+!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'  
+!end if
+   enddo
 
    do j = nyuIB1(myid),nyuIB2(myid)
      call phys_to_four_du(rhsuIB(1,1,j),bandPL(myid))
@@ -424,33 +437,45 @@ subroutine immersed_boundaries_V(u,rhsu,Lu,grid,myid)
      call four_to_phys_du(u2PL(1,1,j),  bandPL(myid))
    enddo
 
+if (myid == 0) then
+ write(*,*) 'myid, nlist_s_v', myid, nlist_ib_s(grid)
+end if
    do ilist = 1,nlist_ib_s(grid)
      i = s_list_ib_v(1,ilist)
      k = s_list_ib_v(2,ilist)
      j = s_list_ib_v(3,ilist)
 
      rhsuIB(i,k,j) = -beta*LuIB(i,k,j)
+!if (myid == 0) then
+!  write(*,*) i,',',k ,',',j, ';'
+!end if
    enddo
 
-!   do ilist = 1,nlist_ib_f(grid)
-!     i = f_list_ib_v(1,ilist)
-!     k = f_list_ib_v(2,ilist)
-!     j = f_list_ib_v(3,ilist)
-!     i2= f_list_ib_v(4,ilist)
-!     k2= f_list_ib_v(5,ilist)
-!     j2= f_list_ib_v(6,ilist)
-!     i3= f_list_ib_v(7,ilist)
-!     k3= f_list_ib_v(8,ilist)
-!     j3= f_list_ib_v(9,ilist)
+if (myid == 0) then
+ write(*,*) 'myid, nlist_f_v', myid, nlist_ib_f(grid)
+end if
+   do ilist = 1,nlist_ib_f(grid)
+     i = f_list_ib_v(1,ilist)
+     k = f_list_ib_v(2,ilist)
+     j = f_list_ib_v(3,ilist)
+     i2= f_list_ib_v(4,ilist)
+     k2= f_list_ib_v(5,ilist)
+     j2= f_list_ib_v(6,ilist)
+     i3= f_list_ib_v(7,ilist)
+     k3= f_list_ib_v(8,ilist)
+     j3= f_list_ib_v(9,ilist)
 
 !     w1= w_list_ib(3,ilist,grid) ! weighting if boundary v is non-zero
-!     w2= w_list_ib_v(1,ilist)
-!     w3= w_list_ib_v(2,ilist)
+     w2= w_list_ib_v(1,ilist)
+     w3= w_list_ib_v(2,ilist)
 
-!     v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
+     v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
 
-!     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
-!   enddo
+     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
+!if (myid == 0) then
+!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'  
+!end if
+   enddo
 
    do j = nyvIB1(myid),nyvIB2(myid)
      call phys_to_four_du(rhsuIB(1,1,j),bandPL(myid))
