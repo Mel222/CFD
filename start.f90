@@ -1082,25 +1082,20 @@ subroutine getbounds(myid,status,ierr)
   
       open(10,file=boundfname,form='unformatted',access='stream')
       read(10) Lx,Ly,Lz
-      read(10)Ngal,nlist_ib_s_bot_u,nlist_ib_s_bot_v,nlist_ib_f_bot_u,nlist_ib_f_bot_v,&
-& ny_columnv, ny_columnu, &
+      read(10)Ngal,nlist_ib_s_bot_v,nlist_ib_f_bot_v,nlist_ib_s_bot_u,nlist_ib_f_bot_u,&
 & nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
-      read(10) nelements_y, dstz 
 
       allocate(list_ib_s_bot_u(3,nlist_ib_s_bot_u), list_ib_s_top_u(3,nlist_ib_s_bot_u))
       allocate(list_ib_s_bot_v(3,nlist_ib_s_bot_v), list_ib_s_top_v(3,nlist_ib_s_bot_v))
-      read(10) list_ib_s_bot_u, list_ib_s_top_u  
-      read(10) list_ib_s_bot_v, list_ib_s_top_v  
+      read(10) list_ib_s_bot_v, list_ib_s_top_v, list_ib_s_bot_u, list_ib_s_top_u 
 
       allocate(list_ib_f_bot_u(9,nlist_ib_f_bot_u), list_ib_f_top_u(9,nlist_ib_f_bot_u))
       allocate(list_ib_f_bot_v(9,nlist_ib_f_bot_v), list_ib_f_top_v(9,nlist_ib_f_bot_v))
-      read(10) list_ib_f_bot_u, list_ib_f_top_u
-      read(10) list_ib_f_bot_v, list_ib_f_top_v
+      read(10) list_ib_f_bot_v, list_ib_f_top_v, list_ib_f_bot_u, list_ib_f_top_u
 
-      allocate(list_ib_f_w_bot_u(3,nlist_ib_f_bot_u), list_ib_f_w_top_u(3,nlist_ib_f_bot_u))
-      allocate(list_ib_f_w_bot_v(3,nlist_ib_f_bot_v), list_ib_f_w_top_v(3,nlist_ib_f_bot_v))
-      read(10) list_ib_f_w_bot_u, list_ib_f_w_top_u 
-      read(10) list_ib_f_w_bot_v, list_ib_f_w_top_v 
+      allocate(list_ib_f_w_bot_u(2,nlist_ib_f_bot_u), list_ib_f_w_top_u(2,nlist_ib_f_bot_u))
+      allocate(list_ib_f_w_bot_v(2,nlist_ib_f_bot_v), list_ib_f_w_top_v(2,nlist_ib_f_bot_v))
+      read(10) list_ib_f_w_bot_v, list_ib_f_w_top_v, list_ib_f_w_bot_u, list_ib_f_w_top_u 
 
       close(10)
 
@@ -1206,8 +1201,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib_u(8,ilist2) = list_ib_f_bot_u(8,ilist) ! k3
           f_list_ib_u(9,ilist2) = list_ib_f_bot_u(9,ilist) ! j3
 
-          w_list_ib_u(1,ilist2) = list_ib_f_w_bot_u(2,ilist) ! w2
-          w_list_ib_u(2,ilist2) = list_ib_f_w_bot_u(3,ilist) ! w3
+          w_list_ib_u(1,ilist2) = list_ib_f_w_bot_u(1,ilist) ! w2
+          w_list_ib_u(2,ilist2) = list_ib_f_w_bot_u(2,ilist) ! w3
         end do
         ! vgrid forcing points bottom 
         do ilist2 = 1,nlist_ib_f(vgrid)
@@ -1222,8 +1217,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib_v(8,ilist2) = list_ib_f_bot_v(8,ilist) ! k3
           f_list_ib_v(9,ilist2) = list_ib_f_bot_v(9,ilist) ! j3
 
-          w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(2,ilist) ! w2
-          w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(3,ilist) ! w3
+          w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(1,ilist) ! w2
+          w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(2,ilist) ! w3
         end do
         deallocate(list_pointer_f) ! DELETE
         deallocate(list_pointer_f_u, list_pointer_f_v) 
@@ -1341,8 +1336,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib_u(8,ilist2) = list_ib_f_top_u(8,ilist)  ! k3
           f_list_ib_u(9,ilist2) = list_ib_f_top_u(9,ilist)  ! j3
 
-          w_list_ib_u(1,ilist2) = list_ib_f_w_top_u(2,ilist)  ! w2
-          w_list_ib_u(2,ilist2) = list_ib_f_w_top_u(3,ilist)  ! w3
+          w_list_ib_u(1,ilist2) = list_ib_f_w_top_u(1,ilist)  ! w2
+          w_list_ib_u(2,ilist2) = list_ib_f_w_top_u(2,ilist)  ! w3
         end do
         ! vgrid forcing points top
         do ilist2 = 1,nlist_ib_f(vgrid)
@@ -1357,8 +1352,8 @@ subroutine getbounds(myid,status,ierr)
           f_list_ib_v(8,ilist2) = list_ib_f_top_v(8,ilist)  ! k3
           f_list_ib_v(9,ilist2) = list_ib_f_top_v(9,ilist)  ! j3
 
-          w_list_ib_v(1,ilist2) = list_ib_f_w_top_v(2,ilist)  ! w2
-          w_list_ib_v(2,ilist2) = list_ib_f_w_top_v(3,ilist)  ! w3
+          w_list_ib_v(1,ilist2) = list_ib_f_w_top_v(1,ilist)  ! w2
+          w_list_ib_v(2,ilist2) = list_ib_f_w_top_v(2,ilist)  ! w3
         end do
         deallocate(list_pointer_f) ! DELETE
         deallocate(list_pointer_f_u, list_pointer_f_v)
@@ -1476,8 +1471,8 @@ subroutine getbounds(myid,status,ierr)
         f_list_ib_u(8,ilist2) = list_ib_f_bot_u(8,ilist)  ! k3
         f_list_ib_u(9,ilist2) = list_ib_f_bot_u(9,ilist)  ! j3
 
-        w_list_ib_u(1,ilist2) = list_ib_f_w_bot_u(2,ilist)  ! w2
-        w_list_ib_u(2,ilist2) = list_ib_f_w_bot_u(3,ilist)  ! w3
+        w_list_ib_u(1,ilist2) = list_ib_f_w_bot_u(1,ilist)  ! w2
+        w_list_ib_u(2,ilist2) = list_ib_f_w_bot_u(2,ilist)  ! w3
       end do
       ! vgrid forcing points bottom
       do ilist2 = 1,nlist_ib_f(vgrid)
@@ -1492,8 +1487,8 @@ subroutine getbounds(myid,status,ierr)
         f_list_ib_v(8,ilist2) = list_ib_f_bot_v(8,ilist)  ! k3
         f_list_ib_v(9,ilist2) = list_ib_f_bot_v(9,ilist)  ! j3
 
-        w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(2,ilist)  ! w2
-        w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(3,ilist)  ! w3
+        w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(1,ilist)  ! w2
+        w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(2,ilist)  ! w3
       end do
       deallocate(list_pointer_s) ! DELETE
       deallocate(list_pointer_f) ! DELETE
