@@ -554,7 +554,7 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
      w2= w_list_ib_u(1,ilist)
      w3= w_list_ib_u(2,ilist)
 
-     v_f = 0d0 !w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
+     v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
 
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
@@ -635,7 +635,7 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
      w2= w_list_ib_v(1,ilist)
      w3= w_list_ib_v(2,ilist)
 
-     v_f = 0d0 !w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
+     v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
 
      rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
    enddo
