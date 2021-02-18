@@ -215,6 +215,8 @@ endif
       post_spacing = Lz/ntilez
       !posth        = posth
       h_ny(1)      = 2.0d0*post_spacing
+      h_ny(1)      = 0.80d0
+      write(*,*) 'h_ny(1) ', h_ny(1)
 
     else
       post_spacing = Lz/ntilez
@@ -1120,8 +1122,8 @@ subroutine getbounds(myid,status,ierr)
           nyvIB1(iproc) = max(nyv12,planelim(vgrid,1,iproc))
           nyvIB2(iproc) = min(nyv22,planelim(vgrid,2,iproc))
         end if
-      write(*,*) 'iproc, nyuIB1, nyuIB2', iproc, nyuIB1(iproc), nyuIB2(iproc)
-      write(*,*) 'iproc, nyvIB1, nyvIB2', iproc, nyvIB1(iproc), nyvIB2(iproc)
+!      write(*,*) 'iproc, nyuIB1, nyuIB2', iproc, nyuIB1(iproc), nyuIB2(iproc)
+!      write(*,*) 'iproc, nyvIB1, nyvIB2', iproc, nyvIB1(iproc), nyvIB2(iproc)
       end do
       ! Prepares the information of the LOWER riblets to be sent to half of the procs
       do iproc = 1,np/2-1
