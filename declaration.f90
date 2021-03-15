@@ -126,14 +126,16 @@ module declaration
   character*4 ext1,ext2,ext3
   character*5 ext4
 
-  integer, pointer :: nlist_ib_s(:), nlist_ib_f(:), nlist_ib(:)
-  integer, pointer :: s_list_ib(:,:,:), f_list_ib(:,:,:), list_ib(:,:,:)
+  integer, pointer :: list_ib(:,:,:), nlist_ib(:) 
+
+! Used for immersed boundary implementation 
+  integer, pointer :: nlist_ib_s(:), nlist_ib_f(:)
   integer, pointer :: s_list_ib_u(:,:), f_list_ib_u(:,:)
   integer, pointer :: s_list_ib_v(:,:), f_list_ib_v(:,:)
-  real(8), pointer :: w_list_ib(:,:,:)
   real(8), pointer :: w_list_ib_u(:,:),  w_list_ib_v(:,:)
   integer, pointer :: nyuIB1(:),nyuIB2(:),nyvIB1(:),nyvIB2(:)
   integer          :: nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
+
   real(8), pointer :: A_ib(:,:,:)
 
   type cfield

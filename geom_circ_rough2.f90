@@ -37,14 +37,9 @@ subroutine boundary_circ_rough
   implicit none
   integer k_ele, i_ele, j,ilist,ilist_xz,ix,iz,shift,grid
   integer nlist_s_xz, nlist_f_xz
-  integer nlist_ib_s_bot, nlist_ib_f_bot ! DELETE
   integer nlist_ib_s_bot_v, nlist_ib_f_bot_v, nlist_ib_s_bot_u, nlist_ib_f_bot_u
-  integer points_stem_s, points_stem_f ! DELETE 
   integer shift_x, shift_z 
   integer points_stem_s_v, points_stem_s_u, points_stem_f_v, points_stem_f_u
-  integer, allocatable:: list_ib_s_bot(:,:,:), list_ib_s_top(:,:,:) ! DELETE
-  integer, allocatable:: list_ib_f_bot(:,:,:), list_ib_f_top(:,:,:) ! DELETE
-  real(8), allocatable:: list_ib_f_w_bot(:,:,:), list_ib_f_w_top(:,:,:) ! DELETE
   integer, allocatable:: list_ib_s_bot_v(:,:), list_ib_s_top_v(:,:) 
   integer, allocatable:: list_ib_f_bot_v(:,:), list_ib_f_top_v(:,:) 
   real(8), allocatable:: list_ib_f_w_bot_v(:,:), list_ib_f_w_top_v(:,:) 
@@ -216,13 +211,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !  nlist_ib_f_bot = (ntilex*(ntilez-1)+ntilex/2)*points_stem_f    ! Number of points in all stems
 !  nlist_ib_f_bot = ntilex*ntilez*points_stem_f    ! Number of points in all stems.    
 !  end if
-
-  allocate(list_ib_s_bot(  3,nlist_ib_s_bot_u,2)) ! DELETE
-  allocate(list_ib_f_bot(  9,nlist_ib_f_bot_u,2)) ! DELETE
-  allocate(list_ib_f_w_bot(2,nlist_ib_f_bot_u,2)) ! DELETE
-  allocate(list_ib_s_top(  3,nlist_ib_s_bot_u,2)) ! DELETE 
-  allocate(list_ib_f_top(  9,nlist_ib_f_bot_u,2)) ! DELETE
-  allocate(list_ib_f_w_top(2,nlist_ib_f_bot_u,2)) ! DELETE
 
   allocate(list_ib_s_bot_u(  3,nlist_ib_s_bot_u))
   allocate(list_ib_f_bot_u(  9,nlist_ib_f_bot_u))
@@ -571,9 +559,6 @@ print*, "Geom complete"
 !  write(*,*) 'list_ib_f_w_bot', list_ib_f_w_bot 
   deallocate(test_circ)
   deallocate(list_ib_s_xz, list_ib_f_xz)
-  deallocate(list_ib_s_bot, list_ib_s_top) ! DELETE
-  deallocate(list_ib_f_bot, list_ib_f_top) ! DELETE
-  deallocate(list_ib_f_w_bot, list_ib_f_w_top) ! DELETE
   deallocate(list_ib_s_bot_v, list_ib_s_top_v, list_ib_s_bot_u, list_ib_s_top_u)
   deallocate(list_ib_f_bot_v, list_ib_f_top_v, list_ib_f_bot_u, list_ib_f_top_u)
   deallocate(list_ib_f_w_bot_v, list_ib_f_w_top_v, list_ib_f_w_bot_u, list_ib_f_w_top_u)

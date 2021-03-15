@@ -1035,20 +1035,14 @@ subroutine getbounds(myid,status,ierr)
   integer status(MPI_STATUS_SIZE),ierr,myid
 
   integer j,iproc,ilist,ilist2
-  integer nlist_ib_s_bot, nlist_ib_f_bot ! DELETE
   integer nlist_ib_s_bot_u, nlist_ib_s_bot_v, nlist_ib_f_bot_u, nlist_ib_f_bot_v
-  integer ny_columnv, ny_columnu, nelements_y ! DELETE
   integer, allocatable:: inputNu(:), inputNv(:)                 ! Message passing array containing input parameters
-  integer, allocatable:: list_ib_s_bot(:,:,:), list_ib_s_top(:,:,:) ! DELETE
-  integer, allocatable:: list_ib_f_bot(:,:,:),list_ib_f_top(:,:,:) ! DELETE
-  real(8), allocatable:: list_ib_f_w_bot(:,:,:),list_ib_f_w_top(:,:,:) ! DELETE
   integer, allocatable:: list_ib_s_bot_u(:,:), list_ib_s_top_u(:,:)
   integer, allocatable:: list_ib_s_bot_v(:,:), list_ib_s_top_v(:,:)
   integer, allocatable:: list_ib_f_bot_u(:,:),list_ib_f_top_u(:,:)
   integer, allocatable:: list_ib_f_bot_v(:,:),list_ib_f_top_v(:,:)
   real(8), allocatable:: list_ib_f_w_bot_u(:,:),list_ib_f_w_top_u(:,:)
   real(8), allocatable:: list_ib_f_w_bot_v(:,:),list_ib_f_w_top_v(:,:)
-  integer, allocatable:: list_pointer_s(:,:), list_pointer_f(:,:) ! DELETE
   integer, allocatable:: list_pointer_s_u(:), list_pointer_f_u(:)
   integer, allocatable:: list_pointer_s_v(:), list_pointer_f_v(:)
 
@@ -1080,7 +1074,6 @@ subroutine getbounds(myid,status,ierr)
       !  A_ib1 and A_ib2 stores the weights of the points in the imm boundaries.
       write(*,*) 'Creating geometry'
       call boundary_circ_rough
-      write(*,*) 'Attention, nlist_ib(ugrid) must be equal to nlist_ib(vgrid)'
   
       open(10,file=boundfname,form='unformatted',access='stream')
       read(10) Lx,Ly,Lz
@@ -1100,13 +1093,6 @@ subroutine getbounds(myid,status,ierr)
       read(10) list_ib_f_w_bot_v, list_ib_f_w_top_v, list_ib_f_w_bot_u, list_ib_f_w_top_u 
 
       close(10)
-
-      allocate(list_ib_s_bot(  3,nlist_ib_s_bot,2)) ! DELETE
-      allocate(list_ib_f_bot(  9,nlist_ib_f_bot,2)) ! DELETE
-      allocate(list_ib_f_w_bot(2,nlist_ib_f_bot,2)) ! DELETE
-      allocate(list_ib_s_top(  3,nlist_ib_s_bot,2)) ! DELETE
-      allocate(list_ib_f_top(  9,nlist_ib_f_bot,2)) ! DELETE
-      allocate(list_ib_f_w_top(2,nlist_ib_f_bot,2)) ! DELETE
 
       ! Tells every proc how many of their planes contain points of the immersed boundaries
       do iproc = 0,np-1
@@ -1129,8 +1115,6 @@ subroutine getbounds(myid,status,ierr)
       do iproc = 1,np/2-1
         nlist_ib_s = 0
         nlist_ib_f = 0
-        allocate(list_pointer_s(nlist_ib_s_bot,2)) ! DELETE
-        allocate(list_pointer_f(nlist_ib_f_bot,2)) ! DELETE
         allocate(list_pointer_s_u(nlist_ib_s_bot_u), list_pointer_s_v(nlist_ib_s_bot_v)) 
         allocate(list_pointer_f_u(nlist_ib_f_bot_u), list_pointer_f_v(nlist_ib_f_bot_v)) 
         ! Checks the points of the imm boundaries that belong to planes of the proc 'iproc'
@@ -1168,9 +1152,6 @@ subroutine getbounds(myid,status,ierr)
           end if
         end do
         ! The list is reordered and stored in a local list
-        allocate(s_list_ib(3,nlist_ib_s(ugrid),2)) ! DELETE
-        allocate(f_list_ib(9,nlist_ib_f(ugrid),2)) ! DELETE
-        allocate(w_list_ib(2,nlist_ib_f(ugrid),2)) ! DELETE
         allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid))) 
         allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid))) 
         allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid))) 
@@ -1188,7 +1169,6 @@ subroutine getbounds(myid,status,ierr)
           s_list_ib_v(2,ilist2) = list_ib_s_bot_v(2,ilist) ! k
           s_list_ib_v(3,ilist2) = list_ib_s_bot_v(3,ilist) ! j
         end do
-        deallocate(list_pointer_s) ! DELETE
         deallocate(list_pointer_s_u, list_pointer_s_v)
         ! ugrid forcing points bottom 
         do ilist2 = 1,nlist_ib_f(ugrid)
@@ -1222,7 +1202,6 @@ subroutine getbounds(myid,status,ierr)
           w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(1,ilist) ! w2
           w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(2,ilist) ! w3
         end do
-        deallocate(list_pointer_f) ! DELETE
         deallocate(list_pointer_f_u, list_pointer_f_v) 
 
         ! Send info to the corresponding procs
@@ -1255,7 +1234,6 @@ subroutine getbounds(myid,status,ierr)
         call MPI_SEND(f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,iproc,25000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8,iproc,26000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(w_list_ib_v,2*nlist_ib_f(vgrid),MPI_REAL8,iproc,27000+iproc,MPI_COMM_WORLD,ierr) 
-        deallocate(s_list_ib, f_list_ib, w_list_ib) ! DELETE
         deallocate(s_list_ib_u, f_list_ib_u, w_list_ib_u)
         deallocate(s_list_ib_v, f_list_ib_v, w_list_ib_v)
       end do
@@ -1264,8 +1242,6 @@ subroutine getbounds(myid,status,ierr)
       do iproc = np/2,np-1
         nlist_ib_s = 0
         nlist_ib_f = 0
-        allocate(list_pointer_s(nlist_ib_s_bot,2)) ! DELETE
-        allocate(list_pointer_f(nlist_ib_f_bot,2)) ! DELETE
         allocate(list_pointer_s_u(nlist_ib_s_bot_u), list_pointer_s_v(nlist_ib_s_bot_v))
         allocate(list_pointer_f_u(nlist_ib_f_bot_u), list_pointer_f_v(nlist_ib_f_bot_v))
         ! Checks the points of the imm boundaries that belong to planes of the proc 'iproc'
@@ -1303,9 +1279,6 @@ subroutine getbounds(myid,status,ierr)
           end if
         end do
         ! The list is reordered and stored in a local list
-        allocate(s_list_ib(3,nlist_ib_s(ugrid),2)) ! DELETE
-        allocate(f_list_ib(9,nlist_ib_f(ugrid),2)) ! DELETE
-        allocate(w_list_ib(2,nlist_ib_f(ugrid),2)) ! DELETE
         allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid)))
         allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
         allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
@@ -1323,7 +1296,6 @@ subroutine getbounds(myid,status,ierr)
           s_list_ib_v(2,ilist2) = list_ib_s_top_v(2,ilist)  ! k
           s_list_ib_v(3,ilist2) = list_ib_s_top_v(3,ilist)  ! j
         end do
-        deallocate(list_pointer_s) ! DELETE
         deallocate(list_pointer_s_u, list_pointer_s_v)
         ! ugrid forcing points top
         do ilist2 = 1,nlist_ib_f(ugrid)
@@ -1357,7 +1329,6 @@ subroutine getbounds(myid,status,ierr)
           w_list_ib_v(1,ilist2) = list_ib_f_w_top_v(1,ilist)  ! w2
           w_list_ib_v(2,ilist2) = list_ib_f_w_top_v(2,ilist)  ! w3
         end do
-        deallocate(list_pointer_f) ! DELETE
         deallocate(list_pointer_f_u, list_pointer_f_v)
         ! The list with 'imm boundary points you have to handle with' is sent to every proc
         inputNu(1) = nlist_ib_s(ugrid)
@@ -1394,7 +1365,6 @@ subroutine getbounds(myid,status,ierr)
 !        write(*,*)  'j', f_list_ib(3,100,2)
 !        write(*,*)  'w', w_list_ib(1,100,2)
 !        write(*,*)
-        deallocate(s_list_ib, f_list_ib, w_list_ib) ! DELETE 
         deallocate(s_list_ib_u, f_list_ib_u, w_list_ib_u) 
         deallocate(s_list_ib_v, f_list_ib_v, w_list_ib_v) 
       end do
@@ -1403,8 +1373,6 @@ subroutine getbounds(myid,status,ierr)
       iproc = 0
       nlist_ib_s = 0
       nlist_ib_f = 0
-      allocate(list_pointer_s(nlist_ib_s_bot,2)) ! DELETE
-      allocate(list_pointer_f(nlist_ib_f_bot,2)) ! DELETE
       allocate(list_pointer_s_u(nlist_ib_s_bot_u), list_pointer_s_v(nlist_ib_s_bot_v))
       allocate(list_pointer_f_u(nlist_ib_f_bot_u), list_pointer_f_v(nlist_ib_f_bot_v))
       ! ugrid solid points bottom 
@@ -1440,9 +1408,6 @@ subroutine getbounds(myid,status,ierr)
         end if
       end do
 
-      allocate(s_list_ib(3,nlist_ib_s(ugrid),2)) ! DELETE
-      allocate(f_list_ib(9,nlist_ib_f(ugrid),2)) ! DELETE
-      allocate(w_list_ib(2,nlist_ib_f(ugrid),2)) ! DELETE
       allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid)))
       allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
       allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
@@ -1492,11 +1457,6 @@ subroutine getbounds(myid,status,ierr)
         w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(1,ilist)  ! w2
         w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(2,ilist)  ! w3
       end do
-      deallocate(list_pointer_s) ! DELETE
-      deallocate(list_pointer_f) ! DELETE
-      deallocate(list_ib_s_bot,list_ib_s_top) ! DELETE
-      deallocate(list_ib_f_bot, list_ib_f_top) ! DELETE
-      deallocate(list_ib_f_w_bot, list_ib_f_w_top) ! DELETE
       deallocate(list_pointer_s_u, list_pointer_s_v)
       deallocate(list_pointer_f_u, list_pointer_f_v)
       deallocate(list_ib_s_bot_u,list_ib_s_top_u)
@@ -1531,9 +1491,6 @@ subroutine getbounds(myid,status,ierr)
       nyv12 = inputNv(2*np+1+3)
       nyv22 = inputNv(2*np+1+4)
 
-      allocate(s_list_ib(3,nlist_ib_s(ugrid),2)) ! DELETE
-      allocate(f_list_ib(9,nlist_ib_f(ugrid),2)) ! DELETE
-      allocate(w_list_ib(2,nlist_ib_f(ugrid),2)) ! DELETE
       allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid)))
       allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
       allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
