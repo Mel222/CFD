@@ -84,8 +84,8 @@ subroutine LUsolU(u,rhsu,grid,myid)
   enddo
 
  call immersed_boundaries_U(u,rhsu,grid,myid)
- call MPI_BARRIER(MPI_COMM_WORLD,ierr)
- stop
+! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+! stop
  
 ! Mel's version
   do iband = sband,eband
