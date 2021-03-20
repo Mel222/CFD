@@ -47,7 +47,7 @@
 
 
 
-subroutine LUsolU(u,rhsu,Lu,grid,myid)
+subroutine LUsolU(u,rhsu,grid,myid)
 !----------------------------------------------------------------------*
 !      GIVEN a_j=L*U AND a_j*x_j=f_j FOR k=nstart:nend
 !      FIRST SOLVE L_j*y_j=f_j AND THEN U_j*x_j=y_j
@@ -71,7 +71,6 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
   integer    :: iopt,myid
   type(cfield) u(sband:eband)
   type(cfield) rhsu(sband:eband)
-  type(cfield) Lu(sband:eband)
     
   real(8) , allocatable:: a(:,:,:,:)
 
@@ -84,9 +83,9 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
     call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
   enddo
 
- call immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
-! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-! stop
+ call immersed_boundaries_U(u,rhsu,grid,myid)
+ call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+ stop
  
 ! Mel's version
   do iband = sband,eband
@@ -106,7 +105,7 @@ subroutine LUsolU(u,rhsu,Lu,grid,myid)
 end subroutine
 
 
-subroutine LUsolV(u,rhsu,Lu,grid,myid)
+subroutine LUsolV(u,rhsu,grid,myid)
 !----------------------------------------------------------------------*
 !      GIVEN a_j=L*U AND a_j*x_j=f_j FOR k=nstart:nend
 !      FIRST SOLVE L_j*y_j=f_j AND THEN U_j*x_j=y_j
@@ -130,7 +129,6 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
   integer    :: iopt,myid
   type(cfield) u(sband:eband)
   type(cfield) rhsu(sband:eband)
-  type(cfield) Lu(sband:eband)
   real(8), allocatable:: xPL(:,:,:)
     
   real(8) , allocatable:: a(:,:,:,:)
@@ -143,7 +141,7 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
     call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
   enddo
   
- call immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
+ call immersed_boundaries_V(u,rhsu,grid,myid)
 ! call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 ! stop 
 
@@ -165,288 +163,7 @@ subroutine LUsolV(u,rhsu,Lu,grid,myid)
 end subroutine
 
 
-
-subroutine immersed_boundaries_U(u,rhsu,Lu,grid,myid)
-   
-   use declaration
-   implicit none 
-
-   include 'mpif.h'
-   integer status(MPI_STATUS_SIZE), ierr, myid
-
-   integer i,j,k, iband,grid,ilist
-   integer i2, j2, k2, i3, j3, k3
-   integer msize
-   type(cfield) u(sband:eband)
-   type(cfield) rhsu(sband:eband)
-   type(cfield) Lu(sband:eband)
-   real(8),pointer:: rhsuIB(:,:,:)
-   real(8),pointer:: LuIB(:,:,:)
-   real(8) beta
-   real(8) v_f
-   real(8) w2, w3
-
-   allocate(rhsuIB(igal,kgal,nyuIB1(myid):nyuIB2(myid)))
-   allocate(LuIB  (igal,kgal,nyuIB1(myid):nyuIB2(myid)))
-   
-
-   beta = bRK(kRK)*dt/Re
-   rhsuIB = 0d0
-   LuIB   = 0d0
-   u1PL   = 0d0
-       
-   call modes_to_planes_dU(rhsuIB, rhsu, myid, status, ierr)
-   call modes_to_planes_dU(LuIB,     Lu, myid, status, ierr)
-   call modes_to_planes_UVP(u1PL,     u, grid, myid, status, ierr)
-
-  if (bandPL(myid)==1) then
-    msize = igal*kgal
-    if (planelim(ugrid,1,myid) <= nyu21+1) then
-      if (myid /= 0) then
-        ! send bottom plane
-        call MPI_SEND(u1PL(:,:,planelim(ugrid,1,myid)),msize,MPI_REAL8,myid-1,1600+myid,MPI_COMM_WORLD,ierr)
-      end if
-    end if
-    if (planelim(ugrid,2,myid) <= nyu21  ) then
-        ! receive new top band (from old bottom)
-        call MPI_RECV(u1PL(:,:,planelim(ugrid,2,myid)+1),msize,MPI_REAL8,myid+1,1600+myid+1,MPI_COMM_WORLD,status,ierr)
-    end if
-    if (planelim(ugrid,2,myid) <= nyu21-1) then
-        ! send top plane
-        call MPI_SEND(u1PL(:,:,planelim(ugrid,2,myid)),msize,MPI_REAL8,myid+1,1700+myid,MPI_COMM_WORLD,ierr)
-    end if
-    if (planelim(ugrid,1,myid) <= nyu21  ) then
-      if (myid /= 0) then
-        ! recieve new bottom plane (from top plane)
-        call MPI_RECV(u1PL(:,:,planelim(ugrid,1,myid)-1),msize,MPI_REAL8,myid-1,1700+myid-1,MPI_COMM_WORLD,status,ierr)
-      end if
-    end if
-  end if
-  if (bandPL(myid)==3) then
-    msize = igal*kgal
-    if (planelim(ugrid,2,myid) >= nyu12-1) then
-      if (myid /= np-1) then
-        ! send top plane
-        call MPI_SEND(u1PL(:,:,planelim(ugrid,2,myid)),msize,MPI_REAL8,myid+1,1800+myid,MPI_COMM_WORLD,ierr)
-      end if
-    end if
-    if (planelim(ugrid,1,myid) >= nyu12  ) then
-        ! receive new bottom band (from old top))
-        call MPI_RECV(u1PL(:,:,planelim(ugrid,1,myid)-1),msize,MPI_REAL8,myid-1,1800+myid-1,MPI_COMM_WORLD,status,ierr)
-    end if
-    if (planelim(ugrid,1,myid) >= nyu12+1) then
-        ! send bottom plane
-        call MPI_SEND(u1PL(:,:,planelim(ugrid,1,myid)),msize,MPI_REAL8,myid-1,1900+myid,MPI_COMM_WORLD,ierr)
-    end if
-    if (planelim(ugrid,2,myid) >= nyu12  ) then
-      if (myid /= np-1) then
-        ! recieve new top plane (from bottom plane)
-        call MPI_RECV(u1PL(:,:,planelim(ugrid,2,myid)+1),msize,MPI_REAL8,myid+1,1900+myid+1,MPI_COMM_WORLD,status,ierr)
-      end if
-    end if
-  end if
- 
-   do j = nyuIB1(myid),nyuIB2(myid)
-     call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
-     call four_to_phys_du(LuIB(1,1,j),bandPL(myid))
-   enddo
-
-   do j = jgal(grid,1)-1, jgal(grid,2)+1
-     call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
-   enddo
-!if (myid == 0) then
-! write(*,*) 'myid, nlist_s_u', myid, nlist_ib_s(grid)
-!end if
-   do ilist = 1,nlist_ib_s(grid)
-     i = s_list_ib_u(1,ilist)
-     k = s_list_ib_u(2,ilist)
-     j = s_list_ib_u(3,ilist)
-
-     rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)   
-!if (myid == 0) then
-!  write(*,*) i,',',k ,',',j, ';'
-!  write(*,*) i, k,j, rhsuIB(i,k,j)
-!end if
-   enddo
-
-!if (myid == 3) then
-! write(*,*) 'myid, nlist_f_u', myid, nlist_ib_f(grid)
-!end if
-   do ilist = 1,nlist_ib_f(grid)
-     i = f_list_ib_u(1,ilist)
-     k = f_list_ib_u(2,ilist)
-     j = f_list_ib_u(3,ilist)
-     i2= f_list_ib_u(4,ilist)
-     k2= f_list_ib_u(5,ilist)
-     j2= f_list_ib_u(6,ilist)
-     i3= f_list_ib_u(7,ilist)
-     k3= f_list_ib_u(8,ilist)
-     j3= f_list_ib_u(9,ilist)
-     
-!     w1= w_list_ib(3,ilist,grid) ! weighting if boundary v is non-zero
-     w2= w_list_ib_u(1,ilist)
-     w3= w_list_ib_u(2,ilist)
-
-     v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
-
-     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
-!if (myid == 3) then
-!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'  
-!end if
-   enddo
-
-   do j = nyuIB1(myid),nyuIB2(myid)
-     call phys_to_four_du(rhsuIB(1,1,j),bandPL(myid))
-   enddo
-
-   call planes_to_modes_dU(rhsu,rhsuIB,myid,status,ierr)
- 
-   deallocate(rhsuIB) 
-   deallocate(LuIB) 
-
-end subroutine
-
-
-subroutine immersed_boundaries_V(u,rhsu,Lu,grid,myid)
-   
-   use declaration
-   implicit none 
-
-   include 'mpif.h'
-   integer status(MPI_STATUS_SIZE), ierr, myid
-
-   integer i,j,k, iband,grid,ilist
-   integer i2, j2, k2, i3, j3, k3
-   integer msize
-   type(cfield) u(sband:eband)
-   type(cfield) rhsu(sband:eband)
-   type(cfield) Lu(sband:eband)
-   real(8),pointer:: rhsuIB(:,:,:)
-   real(8),pointer:: LuIB(:,:,:)
-   real(8) beta
-   real(8) v_f
-   real(8) w2, w3
-
-   allocate(rhsuIB(igal,kgal,nyvIB1(myid):nyvIB2(myid)))
-   allocate(LuIB  (igal,kgal,nyvIB1(myid):nyvIB2(myid)))
-
-   beta = bRK(kRK)*dt/Re
-   rhsuIB = 0d0
-   LuIB   = 0d0 
-   u2PL   = 0d0 
-
-   call modes_to_planes_dV(rhsuIB, rhsu, myid, status, ierr)
-   call modes_to_planes_dV(LuIB,     Lu, myid, status, ierr)
-   call modes_to_planes_UVP(u2PL,      u, grid, myid, status, ierr)
-
-  if (bandPL(myid)==1) then
-    msize = igal*kgal
-    if (planelim(vgrid,1,myid) <= nyv21+1) then
-      if (myid /= 0) then
-        ! send bottom plane
-        call MPI_SEND(u2PL(:,:,planelim(vgrid,1,myid)),msize,MPI_REAL8,myid-1,2000+myid,MPI_COMM_WORLD,ierr)
-      end if
-    end if
-    if (planelim(vgrid,2,myid) <= nyv21  ) then
-        ! receive new top band (from old bottom)
-        call MPI_RECV(u2PL(:,:,planelim(vgrid,2,myid)+1),msize,MPI_REAL8,myid+1,2000+myid+1,MPI_COMM_WORLD,status,ierr)
-    end if
-    if (planelim(vgrid,2,myid) <= nyv21-1) then
-        ! send top plane
-        call MPI_SEND(u2PL(:,:,planelim(vgrid,2,myid)),msize,MPI_REAL8,myid+1,2100+myid,MPI_COMM_WORLD,ierr)
-    end if
-    if (planelim(vgrid,1,myid) <= nyv21  ) then
-      if (myid /= 0) then
-        ! recieve new bottom plane (from top plane)
-        call MPI_RECV(u2PL(:,:,planelim(vgrid,1,myid)-1),msize,MPI_REAL8,myid-1,2100+myid-1,MPI_COMM_WORLD,status,ierr)
-      end if
-    end if
-  end if
-  if (bandPL(myid)==3) then
-    msize = igal*kgal
-    if (planelim(vgrid,2,myid) >= nyv12-1) then
-      if (myid /= np-1) then
-        ! send top plane
-        call MPI_SEND(u2PL(:,:,planelim(vgrid,2,myid)),msize,MPI_REAL8,myid+1,2200+myid,MPI_COMM_WORLD,ierr)
-      end if
-    end if
-    if (planelim(vgrid,1,myid) >= nyv12  ) then
-        ! receive new bottom band (from old top))
-        call MPI_RECV(u2PL(:,:,planelim(vgrid,1,myid)-1),msize,MPI_REAL8,myid-1,2200+myid-1,MPI_COMM_WORLD,status,ierr)
-    end if
-    if (planelim(vgrid,1,myid) >= nyv12+1) then
-        ! send bottom plane
-        call MPI_SEND(u2PL(:,:,planelim(vgrid,1,myid)),msize,MPI_REAL8,myid-1,2300+myid,MPI_COMM_WORLD,ierr)
-    end if
-    if (planelim(vgrid,2,myid) >= nyv12  ) then
-      if (myid /= np-1) then
-        ! recieve new top plane (from bottom plane)
-        call MPI_RECV(u2PL(:,:,planelim(vgrid,2,myid)+1),msize,MPI_REAL8,myid+1,2300+myid+1,MPI_COMM_WORLD,status,ierr)
-      end if
-    end if
-  end if
-
-   do j = nyvIB1(myid),nyvIB2(myid)
-     call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
-     call four_to_phys_du(LuIB(1,1,j),  bandPL(myid))
-   enddo
-   do j = jgal(grid,1)-1, jgal(grid,2)+1
-     call four_to_phys_du(u2PL(1,1,j),  bandPL(myid))
-   enddo
-
-if (myid == 0) then
- write(*,*) 'myid, nlist_s_v', myid, nlist_ib_s(grid)
-end if
-   do ilist = 1,nlist_ib_s(grid)
-     i = s_list_ib_v(1,ilist)
-     k = s_list_ib_v(2,ilist)
-     j = s_list_ib_v(3,ilist)
-
-     rhsuIB(i,k,j) = -beta*LuIB(i,k,j)
-!if (myid == 0) then
-!  write(*,*) i,',',k ,',',j, ';'
-!end if
-   enddo
-
-if (myid == 0) then
- write(*,*) 'myid, nlist_f_v', myid, nlist_ib_f(grid)
-end if
-   do ilist = 1,nlist_ib_f(grid)
-     i = f_list_ib_v(1,ilist)
-     k = f_list_ib_v(2,ilist)
-     j = f_list_ib_v(3,ilist)
-     i2= f_list_ib_v(4,ilist)
-     k2= f_list_ib_v(5,ilist)
-     j2= f_list_ib_v(6,ilist)
-     i3= f_list_ib_v(7,ilist)
-     k3= f_list_ib_v(8,ilist)
-     j3= f_list_ib_v(9,ilist)
-
-!     w1= w_list_ib(3,ilist,grid) ! weighting if boundary v is non-zero
-     w2= w_list_ib_v(1,ilist)
-     w3= w_list_ib_v(2,ilist)
-
-     v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
-
-     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
-!if (myid == 0) then
-!  write(*,*) i,',', k,',', j,',', i2,',', k2,',', j2,',', i3,',', k3,',', j3, ';'  
-!end if
-   enddo
-
-   do j = nyvIB1(myid),nyvIB2(myid)
-     call phys_to_four_du(rhsuIB(1,1,j),bandPL(myid))
-   enddo
-
-   call planes_to_modes_dV(rhsu,rhsuIB,myid,status,ierr)
-
-   deallocate(rhsuIB)
-   deallocate(LuIB)
-
-end subroutine
-
-
-subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
+subroutine immersed_boundaries_U(u,rhsu,grid,myid)
    
    use declaration
    implicit none 
@@ -458,29 +175,21 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
    integer i2, j2, k2, i3, j3, k3, Lap_coef
    type(cfield) u(sband:eband)
    type(cfield) rhsu(sband:eband)
-   type(cfield) Lu(sband:eband)
    real(8),pointer:: rhsuIB(:,:,:)
-   real(8),pointer:: LuIB(:,:,:)
-   real(8) beta
    real(8) v_f
    real(8) w2, w3
 
    allocate(rhsuIB(igal,kgal,nyuIB1(myid):nyuIB2(myid)))
-   allocate(LuIB  (igal,kgal,nyuIB1(myid):nyuIB2(myid)))
    
 
-   beta = bRK(kRK)*dt/Re
    rhsuIB = 0d0
-   LuIB   = 0d0
    u1PL   = 0d0
        
    call modes_to_planes_dU(rhsuIB, rhsu, myid, status, ierr)
-   call modes_to_planes_dU(LuIB,     Lu, myid, status, ierr)
    call modes_to_planes_UVP(u1PL,     u, grid, myid, status, ierr)
  
    do j = nyuIB1(myid),nyuIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
-     call four_to_phys_du(LuIB(1,1,j),bandPL(myid))
      call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
    enddo
 
@@ -490,7 +199,7 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
      j = s_list_ib_u(3,ilist)
      Lap_coef = s_list_ib_u(4,ilist)
 
-     rhsuIB(i,k,j) = Lap_coef*(-beta*LuIB(i,k,j))   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1) 
+     rhsuIB(i,k,j) = Lap_coef*( - u1PL(i,k,j) + rhsuIB(i,k,j) )  
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
@@ -510,7 +219,7 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
 
      v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
 
-     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
+     rhsuIB(i,k,j) = v_f - u1PL(i,k,j) + rhsuIB(i,k,j)
    enddo
 
    do j = nyuIB1(myid),nyuIB2(myid)
@@ -520,12 +229,11 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
    call planes_to_modes_dU(rhsu,rhsuIB,myid,status,ierr)
  
    deallocate(rhsuIB) 
-   deallocate(LuIB) 
 
 end subroutine
 
 
-subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
+subroutine immersed_boundaries_V(u,rhsu,grid,myid)
    
    use declaration
    implicit none 
@@ -537,28 +245,20 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
    integer i2, j2, k2, i3, j3, k3, Lap_coef
    type(cfield) u(sband:eband)
    type(cfield) rhsu(sband:eband)
-   type(cfield) Lu(sband:eband)
    real(8),pointer:: rhsuIB(:,:,:)
-   real(8),pointer:: LuIB(:,:,:)
-   real(8) beta
    real(8) v_f
    real(8) w2, w3
 
    allocate(rhsuIB(igal,kgal,nyvIB1(myid):nyvIB2(myid)))
-   allocate(LuIB  (igal,kgal,nyvIB1(myid):nyvIB2(myid)))
 
-   beta = bRK(kRK)*dt/Re
    rhsuIB = 0d0
-   LuIB   = 0d0 
    u2PL   = 0d0 
 
    call modes_to_planes_dV(rhsuIB, rhsu, myid, status, ierr)
-   call modes_to_planes_dV(LuIB,     Lu, myid, status, ierr)
    call modes_to_planes_UVP(u2PL,      u, grid, myid, status, ierr)
 
    do j = nyvIB1(myid),nyvIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
-     call four_to_phys_du(LuIB(1,1,j),  bandPL(myid))
      call four_to_phys_du(u2PL(1,1,j),  bandPL(myid))
    enddo
 
@@ -568,10 +268,7 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
      j = s_list_ib_v(3,ilist)
      Lap_coef = s_list_ib_v(4,ilist)
 
-     rhsuIB(i,k,j) = Lap_coef*(-beta*LuIB(i,k,j))
-if (j == 177 ) then 
-  write(*,*) myid, j,Lap_coef,LuIB(i,k,j),rhsuIB(i,k,j)
-end if   
+     rhsuIB(i,k,j) = Lap_coef*( - u2PL(i,k,j) + rhsuIB(i,k,j) )
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
@@ -591,7 +288,7 @@ end if
 
      v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
 
-     rhsuIB(i,k,j) = v_f - beta*LuIB(i,k,j)
+     rhsuIB(i,k,j) = v_f - u2PL(i,k,j) + rhsuIB(i,k,j)
    enddo
 
    do j = nyvIB1(myid),nyvIB2(myid)
@@ -601,7 +298,6 @@ end if
    call planes_to_modes_dV(rhsu,rhsuIB,myid,status,ierr)
 
    deallocate(rhsuIB)
-   deallocate(LuIB)
 
 end subroutine
 

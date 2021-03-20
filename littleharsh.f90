@@ -169,9 +169,9 @@ nextqt = floor(t*10d0)/10d0+0.1d0
       ! Build non-linear terms of right-hand-side of Navier-Stokes equation
       call nonlinear(Nu1,Nu2,Nu3,u1,u2,u3,du1,du2,du3,p,div,myid,status,ierr)
       ! Resolve the matricial system
-      call solveU(u1,du1,Lu1,myid)
-      call solveV(u2,du2,Lu2,myid)
-      call solveU(u3,du3,Lu3,myid)
+      call solveU(u1,du1,myid)
+      call solveV(u2,du2,myid)
+      call solveU(u3,du3,myid)
       
      ! Compute the pressure gradient if constant mass flow condition is set
      if (flag_ctpress==0) then
@@ -729,7 +729,7 @@ subroutine RHS0_u3(du3,u3,Nu3,p,Lu3,myid)
 
 end subroutine
 
-subroutine solveU(u,du,Lu,myid)
+subroutine solveU(u,du,myid)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!    SOLVE U1    !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -739,7 +739,6 @@ subroutine solveU(u,du,Lu,myid)
 
   integer i,k,j,iband,column,myid
   type(cfield)  u(sband:eband)
-  type(cfield) Lu(sband:eband)
   type(cfield) du(sband:eband)
 
   do iband = sband,eband
@@ -755,34 +754,11 @@ subroutine solveU(u,du,Lu,myid)
     end do
   end do
 
-  call LUsolU(u,du,Lu,ugrid,myid)
-!call LUsolV(du,ugrid,myid) !Can use for smooth channel
-
-!  do iband = sband,eband
-!    do column = 1,columns_num(iband,myid)
-!      do j = jlim(1,ugrid,iband),jlim(2,ugrid,iband)
-!        u(iband)%f(j,column) = du(iband)%f(j,column) !For solving for u
-!      enddo
-!    enddo
-!  end do
-
-!if (myid ==0 ) then
-!  write(*,*) 'du'
-!  do j = jlim(1,ugrid,2),jlim(2,ugrid,2)
-!    write(*,*) REAL(du(2)%f(j,1)), AIMAG(du(2)%f(j,1))
-!  end do 
-!end if 
-
-!if (myid ==0 ) then
-!  write(*,*) 'u'
-!  do j = jlim(1,ugrid,2),jlim(2,ugrid,2)
-!    write(*,*) REAL(u(2)%f(j,1))!, AIMAG(u(2)%f(j,1))
-!  end do
-!end if
+  call LUsolU(u,du,ugrid,myid)
 
 end subroutine
 
-subroutine solveV(u,du,Lu,myid)
+subroutine solveV(u,du,myid)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!    SOLVE U1    !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -791,7 +767,6 @@ subroutine solveV(u,du,Lu,myid)
   implicit none
   integer i,k,j,iband,column,myid
   type(cfield)  u(sband:eband)
-  type(cfield) Lu(sband:eband)
   type(cfield) du(sband:eband)
 
 
@@ -808,7 +783,7 @@ subroutine solveV(u,du,Lu,myid)
     end do
   end do
 
-  call LUsolV(u,du,Lu,vgrid,myid)
+  call LUsolV(u,du,vgrid,myid)
 
 end subroutine
 
