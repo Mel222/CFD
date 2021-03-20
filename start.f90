@@ -1080,8 +1080,8 @@ subroutine getbounds(myid,status,ierr)
       read(10)Ngal,nlist_ib_s_bot_v,nlist_ib_f_bot_v,nlist_ib_s_bot_u,nlist_ib_f_bot_u,&
 & nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
 
-      allocate(list_ib_s_bot_u(3,nlist_ib_s_bot_u), list_ib_s_top_u(3,nlist_ib_s_bot_u))
-      allocate(list_ib_s_bot_v(3,nlist_ib_s_bot_v), list_ib_s_top_v(3,nlist_ib_s_bot_v))
+      allocate(list_ib_s_bot_u(4,nlist_ib_s_bot_u), list_ib_s_top_u(4,nlist_ib_s_bot_u))
+      allocate(list_ib_s_bot_v(4,nlist_ib_s_bot_v), list_ib_s_top_v(4,nlist_ib_s_bot_v))
       read(10) list_ib_s_bot_v, list_ib_s_top_v, list_ib_s_bot_u, list_ib_s_top_u 
 
       allocate(list_ib_f_bot_u(9,nlist_ib_f_bot_u), list_ib_f_top_u(9,nlist_ib_f_bot_u))
@@ -1152,7 +1152,7 @@ subroutine getbounds(myid,status,ierr)
           end if
         end do
         ! The list is reordered and stored in a local list
-        allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid))) 
+        allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid))) 
         allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid))) 
         allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid))) 
         ! ugrid solid points bottom 
@@ -1161,6 +1161,7 @@ subroutine getbounds(myid,status,ierr)
           s_list_ib_u(1,ilist2) = list_ib_s_bot_u(1,ilist) ! i
           s_list_ib_u(2,ilist2) = list_ib_s_bot_u(2,ilist) ! k
           s_list_ib_u(3,ilist2) = list_ib_s_bot_u(3,ilist) ! j
+          s_list_ib_u(4,ilist2) = list_ib_s_bot_u(4,ilist) ! Lap coef
         end do
         ! vgrid solid points bottom 
         do ilist2 = 1,nlist_ib_s(vgrid)
@@ -1168,6 +1169,7 @@ subroutine getbounds(myid,status,ierr)
           s_list_ib_v(1,ilist2) = list_ib_s_bot_v(1,ilist) ! i
           s_list_ib_v(2,ilist2) = list_ib_s_bot_v(2,ilist) ! k
           s_list_ib_v(3,ilist2) = list_ib_s_bot_v(3,ilist) ! j
+          s_list_ib_v(4,ilist2) = list_ib_s_bot_v(4,ilist) ! Lap coef
         end do
         deallocate(list_pointer_s_u, list_pointer_s_v)
         ! ugrid forcing points bottom 
@@ -1228,8 +1230,8 @@ subroutine getbounds(myid,status,ierr)
         call MPI_SEND(inputNu,2*np+1+5           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(inputNv,2*np+1+5           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
-        call MPI_SEND(s_list_ib_u,3*nlist_ib_s(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(s_list_ib_v,3*nlist_ib_s(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(s_list_ib_u,4*nlist_ib_s(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(s_list_ib_v,4*nlist_ib_s(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,iproc,25000+iproc,MPI_COMM_WORLD,ierr) 
         call MPI_SEND(w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8,iproc,26000+iproc,MPI_COMM_WORLD,ierr) 
@@ -1279,7 +1281,7 @@ subroutine getbounds(myid,status,ierr)
           end if
         end do
         ! The list is reordered and stored in a local list
-        allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid)))
+        allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid)))
         allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
         allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
         ! ugrid solid points top
@@ -1288,6 +1290,7 @@ subroutine getbounds(myid,status,ierr)
           s_list_ib_u(1,ilist2) = list_ib_s_top_u(1,ilist)  ! i
           s_list_ib_u(2,ilist2) = list_ib_s_top_u(2,ilist)  ! k
           s_list_ib_u(3,ilist2) = list_ib_s_top_u(3,ilist)  ! j
+          s_list_ib_u(4,ilist2) = list_ib_s_top_u(4,ilist)  ! Lap coef
         end do
         ! vgrid solid points top
         do ilist2 = 1,nlist_ib_s(vgrid)
@@ -1295,6 +1298,7 @@ subroutine getbounds(myid,status,ierr)
           s_list_ib_v(1,ilist2) = list_ib_s_top_v(1,ilist)  ! i
           s_list_ib_v(2,ilist2) = list_ib_s_top_v(2,ilist)  ! k
           s_list_ib_v(3,ilist2) = list_ib_s_top_v(3,ilist)  ! j
+          s_list_ib_v(4,ilist2) = list_ib_s_top_v(4,ilist)  ! Lap coef
         end do
         deallocate(list_pointer_s_u, list_pointer_s_v)
         ! ugrid forcing points top
@@ -1352,8 +1356,8 @@ subroutine getbounds(myid,status,ierr)
         call MPI_SEND(inputNu,2*np+1+5           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(inputNv,2*np+1+5           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
         ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
-        call MPI_SEND(s_list_ib_u,3*nlist_ib_s(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(s_list_ib_v,3*nlist_ib_s(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(s_list_ib_u,4*nlist_ib_s(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(s_list_ib_v,4*nlist_ib_s(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,iproc,25000+iproc,MPI_COMM_WORLD,ierr)
         call MPI_SEND(w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8  ,iproc,26000+iproc,MPI_COMM_WORLD,ierr)
@@ -1408,7 +1412,7 @@ subroutine getbounds(myid,status,ierr)
         end if
       end do
 
-      allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid)))
+      allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid)))
       allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
       allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
       ! ugrid solid points bottom  
@@ -1417,6 +1421,7 @@ subroutine getbounds(myid,status,ierr)
         s_list_ib_u(1,ilist2) = list_ib_s_bot_u(1,ilist)  ! i
         s_list_ib_u(2,ilist2) = list_ib_s_bot_u(2,ilist)  ! k
         s_list_ib_u(3,ilist2) = list_ib_s_bot_u(3,ilist)  ! j
+        s_list_ib_u(4,ilist2) = list_ib_s_bot_u(4,ilist)  ! Lap coef
       end do
       ! vgrid solid points bottom
       do ilist2 = 1,nlist_ib_s(vgrid)
@@ -1424,6 +1429,7 @@ subroutine getbounds(myid,status,ierr)
         s_list_ib_v(1,ilist2) = list_ib_s_bot_v(1,ilist)  ! i
         s_list_ib_v(2,ilist2) = list_ib_s_bot_v(2,ilist)  ! k
         s_list_ib_v(3,ilist2) = list_ib_s_bot_v(3,ilist)  ! j
+        s_list_ib_v(4,ilist2) = list_ib_s_bot_v(4,ilist)  ! Lap coef
       end do
       ! ugrid forcing points bottom  
       do ilist2 = 1,nlist_ib_f(ugrid)
@@ -1491,12 +1497,12 @@ subroutine getbounds(myid,status,ierr)
       nyv12 = inputNv(2*np+1+3)
       nyv22 = inputNv(2*np+1+4)
 
-      allocate(s_list_ib_u(3,nlist_ib_s(ugrid)), s_list_ib_v(3,nlist_ib_s(vgrid)))
+      allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid)))
       allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
       allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
       ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
-      call MPI_RECV  (s_list_ib_u,3*nlist_ib_s(ugrid),MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (s_list_ib_v,3*nlist_ib_s(vgrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (s_list_ib_u,4*nlist_ib_s(ugrid),MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (s_list_ib_v,4*nlist_ib_s(vgrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
       call MPI_RECV  (f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,0,24000+myid,MPI_COMM_WORLD,status,ierr)
       call MPI_RECV  (f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,0,25000+myid,MPI_COMM_WORLD,status,ierr)
       call MPI_RECV  (w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8  ,0,26000+myid,MPI_COMM_WORLD,status,ierr)

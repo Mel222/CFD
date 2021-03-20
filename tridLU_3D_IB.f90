@@ -455,7 +455,7 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
    integer status(MPI_STATUS_SIZE), ierr, myid
 
    integer i,j,k, iband,grid,ilist
-   integer i2, j2, k2, i3, j3, k3
+   integer i2, j2, k2, i3, j3, k3, Lap_coef
    type(cfield) u(sband:eband)
    type(cfield) rhsu(sband:eband)
    type(cfield) Lu(sband:eband)
@@ -488,12 +488,9 @@ subroutine immersed_boundaries_U_trick(u,rhsu,Lu,grid,myid)
      i = s_list_ib_u(1,ilist)
      k = s_list_ib_u(2,ilist)
      j = s_list_ib_u(3,ilist)
+     Lap_coef = s_list_ib_u(4,ilist)
 
-     rhsuIB(i,k,j) = 0d0
-   
-     if (j==0 .or. j==Ngal(4,3)-dsty+1) then
-       rhsuIB(i,k,j) = -beta*LuIB(i,k,j)   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1)  
-     end if 
+     rhsuIB(i,k,j) = Lap_coef*(-beta*LuIB(i,k,j))   !Akshath: -beta/dyub2*rhsuIB(i,k,j+1) 
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
@@ -537,7 +534,7 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
    integer status(MPI_STATUS_SIZE), ierr, myid
 
    integer i,j,k, iband,grid,ilist
-   integer i2, j2, k2, i3, j3, k3
+   integer i2, j2, k2, i3, j3, k3, Lap_coef
    type(cfield) u(sband:eband)
    type(cfield) rhsu(sband:eband)
    type(cfield) Lu(sband:eband)
@@ -569,12 +566,12 @@ subroutine immersed_boundaries_V_trick(u,rhsu,Lu,grid,myid)
      i = s_list_ib_v(1,ilist)
      k = s_list_ib_v(2,ilist)
      j = s_list_ib_v(3,ilist)
+     Lap_coef = s_list_ib_v(4,ilist)
 
-     rhsuIB(i,k,j) = 0d0
-     
-     if (j==-1 .or. j==Ngal(3,3)-dsty+2) then
-       rhsuIB(i,k,j) = -beta*LuIB(i,k,j)
-     end if
+     rhsuIB(i,k,j) = Lap_coef*(-beta*LuIB(i,k,j))
+if (j == 177 ) then 
+  write(*,*) myid, j,Lap_coef,LuIB(i,k,j),rhsuIB(i,k,j)
+end if   
    enddo
 
    do ilist = 1,nlist_ib_f(grid)
