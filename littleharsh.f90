@@ -754,6 +754,8 @@ subroutine solveU(u,du,myid)
     end do
   end do
 
+  call immersed_boundaries_U(u,du,myid)
+
   call LUsolU(u,du,ugrid,myid)
 
 end subroutine
@@ -782,6 +784,8 @@ subroutine solveV(u,du,myid)
       du(iband)%f(jlim(2,vgrid,iband),column) = 0d0
     end do
   end do
+
+  call immersed_boundaries_V(u,du,myid)
 
   call LUsolV(u,du,vgrid,myid)
 
