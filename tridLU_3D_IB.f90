@@ -76,14 +76,15 @@ subroutine LUsolU(u,rhsu,grid,myid)
 
   !a(diag,column,j,iband)
   allocate(a(3,maxval(columns_num),jlim(1,grid,2):jlim(2,grid,2),nband))
- 
+  
 
   do iband = sband,eband
     call LU_build(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
     call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
+  enddo
 
- 
 ! Mel's version
+  do iband = sband,eband
     do column = 1,columns_num(iband,myid)
       u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*a(2,column,jlim(1,grid,iband),iband)
       do j = jlim(1,grid,iband)+1,jlim(2,grid,iband)
@@ -136,7 +137,6 @@ subroutine LUsolV(u,rhsu,grid,myid)
     call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
   enddo
   
-
 ! Mel's version   
   do iband = sband,eband
     do column = 1,columns_num(iband,myid)
@@ -155,7 +155,7 @@ subroutine LUsolV(u,rhsu,grid,myid)
 end subroutine
 
 
-subroutine immersed_boundaries_U(u,rhsu,myid)
+subroutine immersed_boundaries_U(u,rhsu,grid,myid)
    
    use declaration
    implicit none 
@@ -163,12 +163,12 @@ subroutine immersed_boundaries_U(u,rhsu,myid)
    include 'mpif.h'
    integer status(MPI_STATUS_SIZE), ierr, myid
 
-   integer i,j,k, iband,ilist
-   integer i2, j2, k2, i3, j3, k3, Lap_coef
+   integer i,j,k, iband,grid,ilist
+   integer i2, j2, k2, i3, j3, k3
    type(cfield) u(sband:eband)
    type(cfield) rhsu(sband:eband)
    real(8),pointer:: rhsuIB(:,:,:)
-   real(8) v_f
+   real(8) v_f, Lap_coef
    real(8) w2, w3
 
    allocate(rhsuIB(igal,kgal,nyuIB1(myid):nyuIB2(myid)))
@@ -178,23 +178,14 @@ subroutine immersed_boundaries_U(u,rhsu,myid)
    u1PL   = 0d0
        
    call modes_to_planes_dU(rhsuIB, rhsu, myid, status, ierr)
-   call modes_to_planes_UVP(u1PL,     u, ugrid, myid, status, ierr)
+   call modes_to_planes_UVP(u1PL,     u, grid, myid, status, ierr)
  
    do j = nyuIB1(myid),nyuIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
      call four_to_phys_du(u1PL(1,1,j),bandPL(myid))
    enddo
 
-   do ilist = 1,nlist_ib_s(ugrid) 
-     i = s_list_ib_u(1,ilist)
-     k = s_list_ib_u(2,ilist)
-     j = s_list_ib_u(3,ilist)
-     Lap_coef = s_list_ib_u(4,ilist)
-
-     rhsuIB(i,k,j) = Lap_coef*( - u1PL(i,k,j) + rhsuIB(i,k,j) )  
-   enddo
-
-   do ilist = 1,nlist_ib_f(ugrid) 
+   do ilist = 1,nlist_ib(grid)
      i = f_list_ib_u(1,ilist)
      k = f_list_ib_u(2,ilist)
      j = f_list_ib_u(3,ilist)
@@ -205,12 +196,13 @@ subroutine immersed_boundaries_U(u,rhsu,myid)
      k3= f_list_ib_u(8,ilist)
      j3= f_list_ib_u(9,ilist)
      
-     w2= w_list_ib_u(1,ilist)
-     w3= w_list_ib_u(2,ilist)
+     Lap_coef= w_list_ib_u(1,ilist)
+     w2= w_list_ib_u(2,ilist)
+     w3= w_list_ib_u(3,ilist)
 
      v_f = w2*u1PL(i2,k2,j2) + w3*u1PL(i3,k3,j3)
-
-     rhsuIB(i,k,j) = v_f - u1PL(i,k,j) + rhsuIB(i,k,j)
+     
+     rhsuIB(i,k,j) = Lap_coef*( v_f - u1PL(i,k,j) + rhsuIB(i,k,j) )
    enddo
 
    do j = nyuIB1(myid),nyuIB2(myid)
@@ -224,7 +216,7 @@ subroutine immersed_boundaries_U(u,rhsu,myid)
 end subroutine
 
 
-subroutine immersed_boundaries_V(u,rhsu,myid)
+subroutine immersed_boundaries_V(u,rhsu,grid,myid)
    
    use declaration
    implicit none 
@@ -232,12 +224,12 @@ subroutine immersed_boundaries_V(u,rhsu,myid)
    include 'mpif.h'
    integer status(MPI_STATUS_SIZE), ierr, myid
 
-   integer i,j,k, iband,ilist
-   integer i2, j2, k2, i3, j3, k3, Lap_coef
+   integer i,j,k, iband,grid,ilist
+   integer i2, j2, k2, i3, j3, k3
    type(cfield) u(sband:eband)
    type(cfield) rhsu(sband:eband)
    real(8),pointer:: rhsuIB(:,:,:)
-   real(8) v_f
+   real(8) v_f, Lap_coef
    real(8) w2, w3
 
    allocate(rhsuIB(igal,kgal,nyvIB1(myid):nyvIB2(myid)))
@@ -246,23 +238,14 @@ subroutine immersed_boundaries_V(u,rhsu,myid)
    u2PL   = 0d0 
 
    call modes_to_planes_dV(rhsuIB, rhsu, myid, status, ierr)
-   call modes_to_planes_UVP(u2PL,      u, vgrid, myid, status, ierr)
+   call modes_to_planes_UVP(u2PL,      u, grid, myid, status, ierr)
 
    do j = nyvIB1(myid),nyvIB2(myid)
      call four_to_phys_du(rhsuIB(1,1,j),bandPL(myid))
      call four_to_phys_du(u2PL(1,1,j),  bandPL(myid))
    enddo
 
-   do ilist = 1,nlist_ib_s(vgrid)
-     i = s_list_ib_v(1,ilist)
-     k = s_list_ib_v(2,ilist)
-     j = s_list_ib_v(3,ilist)
-     Lap_coef = s_list_ib_v(4,ilist)
-
-     rhsuIB(i,k,j) = Lap_coef*( - u2PL(i,k,j) + rhsuIB(i,k,j) )
-   enddo
-
-   do ilist = 1,nlist_ib_f(vgrid)
+   do ilist = 1,nlist_ib(grid)
      i = f_list_ib_v(1,ilist)
      k = f_list_ib_v(2,ilist)
      j = f_list_ib_v(3,ilist)
@@ -273,12 +256,13 @@ subroutine immersed_boundaries_V(u,rhsu,myid)
      k3= f_list_ib_v(8,ilist)
      j3= f_list_ib_v(9,ilist)
 
-     w2= w_list_ib_v(1,ilist)
-     w3= w_list_ib_v(2,ilist)
+     Lap_coef= w_list_ib_v(1,ilist)
+     w2= w_list_ib_v(2,ilist)
+     w3= w_list_ib_v(3,ilist)
 
      v_f = w2*u2PL(i2,k2,j2) + w3*u2PL(i3,k3,j3)    
 
-     rhsuIB(i,k,j) = v_f - u2PL(i,k,j) + rhsuIB(i,k,j)
+     rhsuIB(i,k,j) = Lap_coef*( v_f - u2PL(i,k,j) + rhsuIB(i,k,j) )
    enddo
 
    do j = nyvIB1(myid),nyvIB2(myid)
