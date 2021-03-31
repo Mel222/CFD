@@ -1035,19 +1035,15 @@ subroutine getbounds(myid,status,ierr)
   integer status(MPI_STATUS_SIZE),ierr,myid
 
   integer j,iproc,ilist,ilist2
-  integer nlist_ib_s_bot_u, nlist_ib_s_bot_v, nlist_ib_f_bot_u, nlist_ib_f_bot_v
+  integer nlist_ib_bot_v, nlist_ib_bot_u
   integer, allocatable:: inputNu(:), inputNv(:)                 ! Message passing array containing input parameters
-  integer, allocatable:: list_ib_s_bot_u(:,:), list_ib_s_top_u(:,:)
-  integer, allocatable:: list_ib_s_bot_v(:,:), list_ib_s_top_v(:,:)
-  integer, allocatable:: list_ib_f_bot_u(:,:),list_ib_f_top_u(:,:)
-  integer, allocatable:: list_ib_f_bot_v(:,:),list_ib_f_top_v(:,:)
-  real(8), allocatable:: list_ib_f_w_bot_u(:,:),list_ib_f_w_top_u(:,:)
-  real(8), allocatable:: list_ib_f_w_bot_v(:,:),list_ib_f_w_top_v(:,:)
-  integer, allocatable:: list_pointer_s_u(:), list_pointer_f_u(:)
-  integer, allocatable:: list_pointer_s_v(:), list_pointer_f_v(:)
+  integer, allocatable:: list_ib_bot_v(:,:), list_ib_top_v(:,:)
+  integer, allocatable:: list_ib_bot_u(:,:), list_ib_top_u(:,:)
+  real(8), allocatable:: list_ib_w_bot_v(:,:),list_ib_w_top_v(:,:)
+  real(8), allocatable:: list_ib_w_bot_u(:,:),list_ib_w_top_u(:,:)
+  integer, allocatable:: list_pointer_u(:), list_pointer_v(:)
 
-  allocate(nlist_ib_s(2))
-  allocate(nlist_ib_f(2))
+  allocate(nlist_ib(2))
   allocate(nyuIB1(0:np-1))
   allocate(nyuIB2(0:np-1))
   allocate(nyvIB1(0:np-1))
@@ -1055,15 +1051,14 @@ subroutine getbounds(myid,status,ierr)
 
   ! if nribs==0, smooth channel
   if (geometry_type/=3) then
-    nlist_ib_s = 0
-    nlist_ib_f = 0
+    nlist_ib = 0
     nyuIB1   = -88
     nyuIB2   = -99
     nyvIB1   = -88
     nyvIB2   = -99
   else
-    allocate(inputNu(2*np+1+5))
-    allocate(inputNv(2*np+1+5))
+    allocate(inputNu(2*np+1+4))
+    allocate(inputNv(2*np+1+4))
 
 ! MASTER
 
@@ -1077,20 +1072,16 @@ subroutine getbounds(myid,status,ierr)
   
       open(10,file=boundfname,form='unformatted',access='stream')
       read(10) Lx,Ly,Lz
-      read(10)Ngal,nlist_ib_s_bot_v,nlist_ib_f_bot_v,nlist_ib_s_bot_u,nlist_ib_f_bot_u,&
-& nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
+      read(10)Ngal,nlist_ib_bot_v,nlist_ib_bot_u,&
+&     nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
 
-      allocate(list_ib_s_bot_u(4,nlist_ib_s_bot_u), list_ib_s_top_u(4,nlist_ib_s_bot_u))
-      allocate(list_ib_s_bot_v(4,nlist_ib_s_bot_v), list_ib_s_top_v(4,nlist_ib_s_bot_v))
-      read(10) list_ib_s_bot_v, list_ib_s_top_v, list_ib_s_bot_u, list_ib_s_top_u 
+      allocate(list_ib_bot_v(9,nlist_ib_bot_v), list_ib_top_v(9,nlist_ib_bot_v))
+      allocate(list_ib_bot_u(9,nlist_ib_bot_u), list_ib_top_u(9,nlist_ib_bot_u))
+      read(10) list_ib_bot_v, list_ib_top_v, list_ib_bot_u, list_ib_top_u
 
-      allocate(list_ib_f_bot_u(9,nlist_ib_f_bot_u), list_ib_f_top_u(9,nlist_ib_f_bot_u))
-      allocate(list_ib_f_bot_v(9,nlist_ib_f_bot_v), list_ib_f_top_v(9,nlist_ib_f_bot_v))
-      read(10) list_ib_f_bot_v, list_ib_f_top_v, list_ib_f_bot_u, list_ib_f_top_u
-
-      allocate(list_ib_f_w_bot_u(2,nlist_ib_f_bot_u), list_ib_f_w_top_u(2,nlist_ib_f_bot_u))
-      allocate(list_ib_f_w_bot_v(2,nlist_ib_f_bot_v), list_ib_f_w_top_v(2,nlist_ib_f_bot_v))
-      read(10) list_ib_f_w_bot_v, list_ib_f_w_top_v, list_ib_f_w_bot_u, list_ib_f_w_top_u 
+      allocate(list_ib_w_bot_v(3,nlist_ib_bot_v), list_ib_w_top_v(3,nlist_ib_bot_v))
+      allocate(list_ib_w_bot_u(3,nlist_ib_bot_u), list_ib_w_top_u(3,nlist_ib_bot_u))
+      read(10) list_ib_w_bot_v, list_ib_w_top_v, list_ib_w_bot_u, list_ib_w_top_u 
 
       close(10)
 
@@ -1113,105 +1104,69 @@ subroutine getbounds(myid,status,ierr)
       end do
       ! Prepares the information of the LOWER riblets to be sent to half of the procs
       do iproc = 1,np/2-1
-        nlist_ib_s = 0
-        nlist_ib_f = 0
-        allocate(list_pointer_s_u(nlist_ib_s_bot_u), list_pointer_s_v(nlist_ib_s_bot_v)) 
-        allocate(list_pointer_f_u(nlist_ib_f_bot_u), list_pointer_f_v(nlist_ib_f_bot_v)) 
+        nlist_ib = 0
+        allocate(list_pointer_u(nlist_ib_bot_u), list_pointer_v(nlist_ib_bot_v)) 
         ! Checks the points of the imm boundaries that belong to planes of the proc 'iproc'
         ! If the point is in one of those planes, it is added to a list
-        ! ugrid solid points bottom  
-        do ilist = 1,nlist_ib_s_bot_u
-          j = list_ib_s_bot_u(3,ilist)                          ! 1:i 2:k 3:j
-          if (j>=nyuIB1(iproc) .and. j<=nyuIB2(iproc)) then
-            nlist_ib_s(ugrid) = nlist_ib_s(ugrid)+1
-            list_pointer_s_u(nlist_ib_s(ugrid)) = ilist
-          end if
-        end do
-        ! vgrid solid points bottom 
-        do ilist = 1,nlist_ib_s_bot_v
-          j = list_ib_s_bot_v(3,ilist)                          ! 1:i 2:k 3:j
-          if (j>=nyvIB1(iproc) .and. j<=nyvIB2(iproc)) then
-            nlist_ib_s(vgrid) = nlist_ib_s(vgrid)+1
-            list_pointer_s_v(nlist_ib_s(vgrid)) = ilist
-          end if
-        end do
         ! ugrid forcing points bottom  
-        do ilist = 1,nlist_ib_f_bot_u
-          j = list_ib_f_bot_u(3,ilist)                          ! 1:i 2:k 3:j
+        do ilist = 1,nlist_ib_bot_u
+          j = list_ib_bot_u(3,ilist)                          ! 1:i 2:k 3:j
           if (j>=nyuIB1(iproc) .and. j<=nyuIB2(iproc)) then
-            nlist_ib_f(ugrid) = nlist_ib_f(ugrid)+1
-            list_pointer_f_u(nlist_ib_f(ugrid)) = ilist
+            nlist_ib(ugrid) = nlist_ib(ugrid)+1
+            list_pointer_u(nlist_ib(ugrid)) = ilist
           end if
         end do
         ! vgrid forcing points bottom 
-        do ilist = 1,nlist_ib_f_bot_v
-          j = list_ib_f_bot_v(3,ilist)                          ! 1:i 2:k 3:j
+        do ilist = 1,nlist_ib_bot_v
+          j = list_ib_bot_v(3,ilist)                          ! 1:i 2:k 3:j
           if (j>=nyvIB1(iproc) .and. j<=nyvIB2(iproc)) then
-            nlist_ib_f(vgrid) = nlist_ib_f(vgrid)+1
-            list_pointer_f_v(nlist_ib_f(vgrid)) = ilist
+            nlist_ib(vgrid) = nlist_ib(vgrid)+1
+            list_pointer_v(nlist_ib(vgrid)) = ilist
           end if
         end do
         ! The list is reordered and stored in a local list
-        allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid))) 
-        allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid))) 
-        allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid))) 
-        ! ugrid solid points bottom 
-        do ilist2 = 1,nlist_ib_s(ugrid)
-          ilist = list_pointer_s_u(ilist2)
-          s_list_ib_u(1,ilist2) = list_ib_s_bot_u(1,ilist) ! i
-          s_list_ib_u(2,ilist2) = list_ib_s_bot_u(2,ilist) ! k
-          s_list_ib_u(3,ilist2) = list_ib_s_bot_u(3,ilist) ! j
-          s_list_ib_u(4,ilist2) = list_ib_s_bot_u(4,ilist) ! Lap coef
-        end do
-        ! vgrid solid points bottom 
-        do ilist2 = 1,nlist_ib_s(vgrid)
-          ilist = list_pointer_s_v(ilist2)
-          s_list_ib_v(1,ilist2) = list_ib_s_bot_v(1,ilist) ! i
-          s_list_ib_v(2,ilist2) = list_ib_s_bot_v(2,ilist) ! k
-          s_list_ib_v(3,ilist2) = list_ib_s_bot_v(3,ilist) ! j
-          s_list_ib_v(4,ilist2) = list_ib_s_bot_v(4,ilist) ! Lap coef
-        end do
-        deallocate(list_pointer_s_u, list_pointer_s_v)
+        allocate(f_list_ib_u(9,nlist_ib(ugrid)), f_list_ib_v(9,nlist_ib(vgrid))) 
+        allocate(w_list_ib_u(3,nlist_ib(ugrid)), w_list_ib_v(3,nlist_ib(vgrid))) 
         ! ugrid forcing points bottom 
-        do ilist2 = 1,nlist_ib_f(ugrid)
-          ilist = list_pointer_f_u(ilist2)
-          f_list_ib_u(1,ilist2) = list_ib_f_bot_u(1,ilist) ! i
-          f_list_ib_u(2,ilist2) = list_ib_f_bot_u(2,ilist) ! k
-          f_list_ib_u(3,ilist2) = list_ib_f_bot_u(3,ilist) ! j
-          f_list_ib_u(4,ilist2) = list_ib_f_bot_u(4,ilist) ! i2
-          f_list_ib_u(5,ilist2) = list_ib_f_bot_u(5,ilist) ! k2
-          f_list_ib_u(6,ilist2) = list_ib_f_bot_u(6,ilist) ! j2
-          f_list_ib_u(7,ilist2) = list_ib_f_bot_u(7,ilist) ! i3
-          f_list_ib_u(8,ilist2) = list_ib_f_bot_u(8,ilist) ! k3
-          f_list_ib_u(9,ilist2) = list_ib_f_bot_u(9,ilist) ! j3
+        do ilist2 = 1,nlist_ib(ugrid)
+          ilist = list_pointer_u(ilist2)
+          f_list_ib_u(1,ilist2) = list_ib_bot_u(1,ilist) ! i
+          f_list_ib_u(2,ilist2) = list_ib_bot_u(2,ilist) ! k
+          f_list_ib_u(3,ilist2) = list_ib_bot_u(3,ilist) ! j
+          f_list_ib_u(4,ilist2) = list_ib_bot_u(4,ilist) ! i2
+          f_list_ib_u(5,ilist2) = list_ib_bot_u(5,ilist) ! k2
+          f_list_ib_u(6,ilist2) = list_ib_bot_u(6,ilist) ! j2
+          f_list_ib_u(7,ilist2) = list_ib_bot_u(7,ilist) ! i3
+          f_list_ib_u(8,ilist2) = list_ib_bot_u(8,ilist) ! k3
+          f_list_ib_u(9,ilist2) = list_ib_bot_u(9,ilist) ! j3
 
-          w_list_ib_u(1,ilist2) = list_ib_f_w_bot_u(1,ilist) ! w2
-          w_list_ib_u(2,ilist2) = list_ib_f_w_bot_u(2,ilist) ! w3
+          w_list_ib_u(1,ilist2) = list_ib_w_bot_u(1,ilist) ! Lap coef
+          w_list_ib_u(2,ilist2) = list_ib_w_bot_u(2,ilist) ! w2
+          w_list_ib_u(3,ilist2) = list_ib_w_bot_u(3,ilist) ! w3
         end do
         ! vgrid forcing points bottom 
-        do ilist2 = 1,nlist_ib_f(vgrid)
-          ilist = list_pointer_f_v(ilist2)
-          f_list_ib_v(1,ilist2) = list_ib_f_bot_v(1,ilist) ! i
-          f_list_ib_v(2,ilist2) = list_ib_f_bot_v(2,ilist) ! k
-          f_list_ib_v(3,ilist2) = list_ib_f_bot_v(3,ilist) ! j
-          f_list_ib_v(4,ilist2) = list_ib_f_bot_v(4,ilist) ! i2
-          f_list_ib_v(5,ilist2) = list_ib_f_bot_v(5,ilist) ! k2
-          f_list_ib_v(6,ilist2) = list_ib_f_bot_v(6,ilist) ! j2
-          f_list_ib_v(7,ilist2) = list_ib_f_bot_v(7,ilist) ! i3
-          f_list_ib_v(8,ilist2) = list_ib_f_bot_v(8,ilist) ! k3
-          f_list_ib_v(9,ilist2) = list_ib_f_bot_v(9,ilist) ! j3
+        do ilist2 = 1,nlist_ib(vgrid)
+          ilist = list_pointer_v(ilist2)
+          f_list_ib_v(1,ilist2) = list_ib_bot_v(1,ilist) ! i
+          f_list_ib_v(2,ilist2) = list_ib_bot_v(2,ilist) ! k
+          f_list_ib_v(3,ilist2) = list_ib_bot_v(3,ilist) ! j
+          f_list_ib_v(4,ilist2) = list_ib_bot_v(4,ilist) ! i2
+          f_list_ib_v(5,ilist2) = list_ib_bot_v(5,ilist) ! k2
+          f_list_ib_v(6,ilist2) = list_ib_bot_v(6,ilist) ! j2
+          f_list_ib_v(7,ilist2) = list_ib_bot_v(7,ilist) ! i3
+          f_list_ib_v(8,ilist2) = list_ib_bot_v(8,ilist) ! k3
+          f_list_ib_v(9,ilist2) = list_ib_bot_v(9,ilist) ! j3
 
-          w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(1,ilist) ! w2
-          w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(2,ilist) ! w3
+          w_list_ib_v(1,ilist2) = list_ib_w_bot_v(1,ilist) ! Lap coef
+          w_list_ib_v(2,ilist2) = list_ib_w_bot_v(2,ilist) ! w2
+          w_list_ib_v(3,ilist2) = list_ib_w_bot_v(3,ilist) ! w3
         end do
-        deallocate(list_pointer_f_u, list_pointer_f_v) 
+        deallocate(list_pointer_u, list_pointer_v) 
 
         ! Send info to the corresponding procs
         ! The list with 'imm boundary points you have to handle with' is sent to every proc
-        inputNu(1) = nlist_ib_s(ugrid)
-        inputNv(1) = nlist_ib_s(vgrid)
-        inputNu(2*np+1+5) = nlist_ib_f(ugrid)
-        inputNv(2*np+1+5) = nlist_ib_f(vgrid)
+        inputNu(1) = nlist_ib(ugrid)
+        inputNv(1) = nlist_ib(vgrid)
         do j = 0,np-1
           inputNu(j+2   ) = nyuIB1(j)
           inputNu(j+2+np) = nyuIB2(j)
@@ -1227,118 +1182,79 @@ subroutine getbounds(myid,status,ierr)
         inputNv(2*np+1+3) = nyv12
         inputNv(2*np+1+4) = nyv22
 
-        call MPI_SEND(inputNu,2*np+1+5           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(inputNv,2*np+1+5           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
-        ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
-        call MPI_SEND(s_list_ib_u,4*nlist_ib_s(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(s_list_ib_v,4*nlist_ib_s(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,iproc,25000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8,iproc,26000+iproc,MPI_COMM_WORLD,ierr) 
-        call MPI_SEND(w_list_ib_v,2*nlist_ib_f(vgrid),MPI_REAL8,iproc,27000+iproc,MPI_COMM_WORLD,ierr) 
-        deallocate(s_list_ib_u, f_list_ib_u, w_list_ib_u)
-        deallocate(s_list_ib_v, f_list_ib_v, w_list_ib_v)
+        call MPI_SEND(inputNu,2*np+1+4           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(inputNv,2*np+1+4           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(f_list_ib_u,9*nlist_ib(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(f_list_ib_v,9*nlist_ib(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(w_list_ib_u,3*nlist_ib(ugrid),MPI_REAL8,iproc,24000+iproc,MPI_COMM_WORLD,ierr) 
+        call MPI_SEND(w_list_ib_v,3*nlist_ib(vgrid),MPI_REAL8,iproc,25000+iproc,MPI_COMM_WORLD,ierr) 
+        deallocate(f_list_ib_u, w_list_ib_u)
+        deallocate(f_list_ib_v, w_list_ib_v)
       end do
 
       ! Prepares the information of the UPPER riblets to be sent to half of the procs
       do iproc = np/2,np-1
-        nlist_ib_s = 0
-        nlist_ib_f = 0
-        allocate(list_pointer_s_u(nlist_ib_s_bot_u), list_pointer_s_v(nlist_ib_s_bot_v))
-        allocate(list_pointer_f_u(nlist_ib_f_bot_u), list_pointer_f_v(nlist_ib_f_bot_v))
+        nlist_ib = 0
+        allocate(list_pointer_u(nlist_ib_bot_u), list_pointer_v(nlist_ib_bot_v))
         ! Checks the points of the imm boundaries that belong to planes of the proc 'iproc'
         ! If the point is in one of those planes, it is added to a list
-        ! ugrid solid points top
-        do ilist = 1,nlist_ib_s_bot_u
-          j = list_ib_s_top_u(3,ilist)
-          if (j>=nyuIB1(iproc) .and. j<=nyuIB2(iproc)) then
-            nlist_ib_s(ugrid) = nlist_ib_s(ugrid)+1
-            list_pointer_s_u(nlist_ib_s(ugrid)) = ilist
-          end if
-        end do
-        ! vgrid solid points top
-        do ilist = 1,nlist_ib_s_bot_v
-          j = list_ib_s_top_v(3,ilist)
-          if (j>=nyvIB1(iproc) .and. j<=nyvIB2(iproc)) then
-            nlist_ib_s(vgrid) = nlist_ib_s(vgrid)+1
-            list_pointer_s_v(nlist_ib_s(vgrid)) = ilist
-          end if
-        end do
         ! ugrid forcing points top
-        do ilist = 1,nlist_ib_f_bot_u
-          j = list_ib_f_top_u(3,ilist)
+        do ilist = 1,nlist_ib_bot_u
+          j = list_ib_top_u(3,ilist)
           if (j>=nyuIB1(iproc) .and. j<=nyuIB2(iproc)) then
-            nlist_ib_f(ugrid) = nlist_ib_f(ugrid)+1
-            list_pointer_f_u(nlist_ib_f(ugrid)) = ilist
+            nlist_ib(ugrid) = nlist_ib(ugrid)+1
+            list_pointer_u(nlist_ib(ugrid)) = ilist
           end if
         end do
         ! vgrid forcing points top
-        do ilist = 1,nlist_ib_f_bot_v
-          j = list_ib_f_top_v(3,ilist)
+        do ilist = 1,nlist_ib_bot_v
+          j = list_ib_top_v(3,ilist)
           if (j>=nyvIB1(iproc) .and. j<=nyvIB2(iproc)) then
-            nlist_ib_f(vgrid) = nlist_ib_f(vgrid)+1
-            list_pointer_f_v(nlist_ib_f(vgrid)) = ilist
+            nlist_ib(vgrid) = nlist_ib(vgrid)+1
+            list_pointer_v(nlist_ib(vgrid)) = ilist
           end if
         end do
         ! The list is reordered and stored in a local list
-        allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid)))
-        allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
-        allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
-        ! ugrid solid points top
-        do ilist2 = 1,nlist_ib_s(ugrid)
-          ilist = list_pointer_s_u(ilist2)
-          s_list_ib_u(1,ilist2) = list_ib_s_top_u(1,ilist)  ! i
-          s_list_ib_u(2,ilist2) = list_ib_s_top_u(2,ilist)  ! k
-          s_list_ib_u(3,ilist2) = list_ib_s_top_u(3,ilist)  ! j
-          s_list_ib_u(4,ilist2) = list_ib_s_top_u(4,ilist)  ! Lap coef
-        end do
-        ! vgrid solid points top
-        do ilist2 = 1,nlist_ib_s(vgrid)
-          ilist = list_pointer_s_v(ilist2)
-          s_list_ib_v(1,ilist2) = list_ib_s_top_v(1,ilist)  ! i
-          s_list_ib_v(2,ilist2) = list_ib_s_top_v(2,ilist)  ! k
-          s_list_ib_v(3,ilist2) = list_ib_s_top_v(3,ilist)  ! j
-          s_list_ib_v(4,ilist2) = list_ib_s_top_v(4,ilist)  ! Lap coef
-        end do
-        deallocate(list_pointer_s_u, list_pointer_s_v)
+        allocate(f_list_ib_u(9,nlist_ib(ugrid)), f_list_ib_v(9,nlist_ib(vgrid)))
+        allocate(w_list_ib_u(3,nlist_ib(ugrid)), w_list_ib_v(3,nlist_ib(vgrid)))
         ! ugrid forcing points top
-        do ilist2 = 1,nlist_ib_f(ugrid)
-          ilist = list_pointer_f_u(ilist2)
-          f_list_ib_u(1,ilist2) = list_ib_f_top_u(1,ilist)  ! i
-          f_list_ib_u(2,ilist2) = list_ib_f_top_u(2,ilist)  ! k
-          f_list_ib_u(3,ilist2) = list_ib_f_top_u(3,ilist)  ! j
-          f_list_ib_u(4,ilist2) = list_ib_f_top_u(4,ilist)  ! i2
-          f_list_ib_u(5,ilist2) = list_ib_f_top_u(5,ilist)  ! k2
-          f_list_ib_u(6,ilist2) = list_ib_f_top_u(6,ilist)  ! j2
-          f_list_ib_u(7,ilist2) = list_ib_f_top_u(7,ilist)  ! i3
-          f_list_ib_u(8,ilist2) = list_ib_f_top_u(8,ilist)  ! k3
-          f_list_ib_u(9,ilist2) = list_ib_f_top_u(9,ilist)  ! j3
+        do ilist2 = 1,nlist_ib(ugrid)
+          ilist = list_pointer_u(ilist2)
+          f_list_ib_u(1,ilist2) = list_ib_top_u(1,ilist)  ! i
+          f_list_ib_u(2,ilist2) = list_ib_top_u(2,ilist)  ! k
+          f_list_ib_u(3,ilist2) = list_ib_top_u(3,ilist)  ! j
+          f_list_ib_u(4,ilist2) = list_ib_top_u(4,ilist)  ! i2
+          f_list_ib_u(5,ilist2) = list_ib_top_u(5,ilist)  ! k2
+          f_list_ib_u(6,ilist2) = list_ib_top_u(6,ilist)  ! j2
+          f_list_ib_u(7,ilist2) = list_ib_top_u(7,ilist)  ! i3
+          f_list_ib_u(8,ilist2) = list_ib_top_u(8,ilist)  ! k3
+          f_list_ib_u(9,ilist2) = list_ib_top_u(9,ilist)  ! j3
 
-          w_list_ib_u(1,ilist2) = list_ib_f_w_top_u(1,ilist)  ! w2
-          w_list_ib_u(2,ilist2) = list_ib_f_w_top_u(2,ilist)  ! w3
+          w_list_ib_u(1,ilist2) = list_ib_w_top_u(1,ilist)  ! Lap coef
+          w_list_ib_u(2,ilist2) = list_ib_w_top_u(2,ilist)  ! w2
+          w_list_ib_u(3,ilist2) = list_ib_w_top_u(3,ilist)  ! w3
         end do
         ! vgrid forcing points top
-        do ilist2 = 1,nlist_ib_f(vgrid)
-          ilist = list_pointer_f_v(ilist2)
-          f_list_ib_v(1,ilist2) = list_ib_f_top_v(1,ilist)  ! i
-          f_list_ib_v(2,ilist2) = list_ib_f_top_v(2,ilist)  ! k
-          f_list_ib_v(3,ilist2) = list_ib_f_top_v(3,ilist)  ! j
-          f_list_ib_v(4,ilist2) = list_ib_f_top_v(4,ilist)  ! i2
-          f_list_ib_v(5,ilist2) = list_ib_f_top_v(5,ilist)  ! k2
-          f_list_ib_v(6,ilist2) = list_ib_f_top_v(6,ilist)  ! j2
-          f_list_ib_v(7,ilist2) = list_ib_f_top_v(7,ilist)  ! i3
-          f_list_ib_v(8,ilist2) = list_ib_f_top_v(8,ilist)  ! k3
-          f_list_ib_v(9,ilist2) = list_ib_f_top_v(9,ilist)  ! j3
+        do ilist2 = 1,nlist_ib(vgrid)
+          ilist = list_pointer_v(ilist2)
+          f_list_ib_v(1,ilist2) = list_ib_top_v(1,ilist)  ! i
+          f_list_ib_v(2,ilist2) = list_ib_top_v(2,ilist)  ! k
+          f_list_ib_v(3,ilist2) = list_ib_top_v(3,ilist)  ! j
+          f_list_ib_v(4,ilist2) = list_ib_top_v(4,ilist)  ! i2
+          f_list_ib_v(5,ilist2) = list_ib_top_v(5,ilist)  ! k2
+          f_list_ib_v(6,ilist2) = list_ib_top_v(6,ilist)  ! j2
+          f_list_ib_v(7,ilist2) = list_ib_top_v(7,ilist)  ! i3
+          f_list_ib_v(8,ilist2) = list_ib_top_v(8,ilist)  ! k3
+          f_list_ib_v(9,ilist2) = list_ib_top_v(9,ilist)  ! j3
 
-          w_list_ib_v(1,ilist2) = list_ib_f_w_top_v(1,ilist)  ! w2
-          w_list_ib_v(2,ilist2) = list_ib_f_w_top_v(2,ilist)  ! w3
+          w_list_ib_v(1,ilist2) = list_ib_w_top_v(1,ilist)  ! Lap coef
+          w_list_ib_v(2,ilist2) = list_ib_w_top_v(2,ilist)  ! w2
+          w_list_ib_v(3,ilist2) = list_ib_w_top_v(3,ilist)  ! w3
         end do
-        deallocate(list_pointer_f_u, list_pointer_f_v)
+        deallocate(list_pointer_u, list_pointer_v)
         ! The list with 'imm boundary points you have to handle with' is sent to every proc
-        inputNu(1) = nlist_ib_s(ugrid)
-        inputNv(1) = nlist_ib_s(vgrid)
-        inputNu(2*np+1+5) = nlist_ib_f(ugrid)
-        inputNv(2*np+1+5) = nlist_ib_f(vgrid)
+        inputNu(1) = nlist_ib(ugrid)
+        inputNv(1) = nlist_ib(vgrid)
         do j = 0,np-1
           inputNu(j+2   ) = nyuIB1(j)
           inputNu(j+2+np) = nyuIB2(j)
@@ -1353,135 +1269,88 @@ subroutine getbounds(myid,status,ierr)
         inputNv(2*np+1+2) = nyv21
         inputNv(2*np+1+3) = nyv12
         inputNv(2*np+1+4) = nyv22
-        call MPI_SEND(inputNu,2*np+1+5           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(inputNv,2*np+1+5           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
-        ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
-        call MPI_SEND(s_list_ib_u,4*nlist_ib_s(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(s_list_ib_v,4*nlist_ib_s(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,iproc,25000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8  ,iproc,26000+iproc,MPI_COMM_WORLD,ierr)
-        call MPI_SEND(w_list_ib_v,2*nlist_ib_f(vgrid),MPI_REAL8  ,iproc,27000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(inputNu,2*np+1+4           ,MPI_INTEGER,iproc,20000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(inputNv,2*np+1+4           ,MPI_INTEGER,iproc,21000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(f_list_ib_u,9*nlist_ib(ugrid),MPI_INTEGER,iproc,22000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(f_list_ib_v,9*nlist_ib(vgrid),MPI_INTEGER,iproc,23000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(w_list_ib_u,3*nlist_ib(ugrid),MPI_REAL8  ,iproc,24000+iproc,MPI_COMM_WORLD,ierr)
+        call MPI_SEND(w_list_ib_v,3*nlist_ib(vgrid),MPI_REAL8  ,iproc,25000+iproc,MPI_COMM_WORLD,ierr)
 
-!        write(*,*) 'myid', myid
-!        write(*,*) 'iproc', iproc
-!        write(*,*) 'nlist', nlist_ib_f(2)
-!        write(*,*)  'j', f_list_ib(3,100,2)
-!        write(*,*)  'w', w_list_ib(1,100,2)
-!        write(*,*)
-        deallocate(s_list_ib_u, f_list_ib_u, w_list_ib_u) 
-        deallocate(s_list_ib_v, f_list_ib_v, w_list_ib_v) 
+        deallocate(f_list_ib_u, w_list_ib_u) 
+        deallocate(f_list_ib_v, w_list_ib_v) 
       end do
 
       ! Prepares the information to be sent to the master proc 
       iproc = 0
-      nlist_ib_s = 0
-      nlist_ib_f = 0
-      allocate(list_pointer_s_u(nlist_ib_s_bot_u), list_pointer_s_v(nlist_ib_s_bot_v))
-      allocate(list_pointer_f_u(nlist_ib_f_bot_u), list_pointer_f_v(nlist_ib_f_bot_v))
-      ! ugrid solid points bottom 
-      do ilist = 1,nlist_ib_s_bot_u
-        j = list_ib_s_bot_u(3,ilist)
-        if (j>=nyuIB1(iproc) .and. j<=nyuIB2(iproc)) then
-          nlist_ib_s(ugrid) = nlist_ib_s(ugrid)+1
-          list_pointer_s_u(nlist_ib_s(ugrid)) = ilist
-        end if
-      end do
-      ! vgrid solid points bottom   
-      do ilist = 1,nlist_ib_s_bot_v
-        j = list_ib_s_bot_v(3,ilist)
-        if (j>=nyvIB1(iproc) .and. j<=nyvIB2(iproc)) then
-          nlist_ib_s(vgrid) = nlist_ib_s(vgrid)+1
-          list_pointer_s_v(nlist_ib_s(vgrid)) = ilist
-        end if
-      end do
+      nlist_ib = 0
+      allocate(list_pointer_u(nlist_ib_bot_u), list_pointer_v(nlist_ib_bot_v))
       ! ugrid forcing points bottom 
-      do ilist = 1,nlist_ib_f_bot_u
-        j = list_ib_f_bot_u(3,ilist)
+      do ilist = 1,nlist_ib_bot_u
+        j = list_ib_bot_u(3,ilist)
         if (j>=nyuIB1(iproc) .and. j<=nyuIB2(iproc)) then
-          nlist_ib_f(ugrid) = nlist_ib_f(ugrid)+1
-          list_pointer_f_u(nlist_ib_f(ugrid)) = ilist
+          nlist_ib(ugrid) = nlist_ib(ugrid)+1
+          list_pointer_u(nlist_ib(ugrid)) = ilist
         end if
       end do
       ! vgrid forcing points bottom   
-      do ilist = 1,nlist_ib_f_bot_v
-        j = list_ib_f_bot_v(3,ilist)
+      do ilist = 1,nlist_ib_bot_v
+        j = list_ib_bot_v(3,ilist)
         if (j>=nyvIB1(iproc) .and. j<=nyvIB2(iproc)) then
-          nlist_ib_f(vgrid) = nlist_ib_f(vgrid)+1
-          list_pointer_f_v(nlist_ib_f(vgrid)) = ilist
+          nlist_ib(vgrid) = nlist_ib(vgrid)+1
+          list_pointer_v(nlist_ib(vgrid)) = ilist
         end if
       end do
 
-      allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid)))
-      allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
-      allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
-      ! ugrid solid points bottom  
-      do ilist2 = 1,nlist_ib_s(ugrid)
-        ilist = list_pointer_s_u(ilist2)
-        s_list_ib_u(1,ilist2) = list_ib_s_bot_u(1,ilist)  ! i
-        s_list_ib_u(2,ilist2) = list_ib_s_bot_u(2,ilist)  ! k
-        s_list_ib_u(3,ilist2) = list_ib_s_bot_u(3,ilist)  ! j
-        s_list_ib_u(4,ilist2) = list_ib_s_bot_u(4,ilist)  ! Lap coef
-      end do
-      ! vgrid solid points bottom
-      do ilist2 = 1,nlist_ib_s(vgrid)
-        ilist = list_pointer_s_v(ilist2)
-        s_list_ib_v(1,ilist2) = list_ib_s_bot_v(1,ilist)  ! i
-        s_list_ib_v(2,ilist2) = list_ib_s_bot_v(2,ilist)  ! k
-        s_list_ib_v(3,ilist2) = list_ib_s_bot_v(3,ilist)  ! j
-        s_list_ib_v(4,ilist2) = list_ib_s_bot_v(4,ilist)  ! Lap coef
-      end do
+      allocate(f_list_ib_u(9,nlist_ib(ugrid)), f_list_ib_v(9,nlist_ib(vgrid)))
+      allocate(w_list_ib_u(3,nlist_ib(ugrid)), w_list_ib_v(3,nlist_ib(vgrid)))
       ! ugrid forcing points bottom  
-      do ilist2 = 1,nlist_ib_f(ugrid)
-        ilist = list_pointer_f_u(ilist2)
-        f_list_ib_u(1,ilist2) = list_ib_f_bot_u(1,ilist)  ! i
-        f_list_ib_u(2,ilist2) = list_ib_f_bot_u(2,ilist)  ! k
-        f_list_ib_u(3,ilist2) = list_ib_f_bot_u(3,ilist)  ! j
-        f_list_ib_u(4,ilist2) = list_ib_f_bot_u(4,ilist)  ! i2
-        f_list_ib_u(5,ilist2) = list_ib_f_bot_u(5,ilist)  ! k2
-        f_list_ib_u(6,ilist2) = list_ib_f_bot_u(6,ilist)  ! j2
-        f_list_ib_u(7,ilist2) = list_ib_f_bot_u(7,ilist)  ! i3
-        f_list_ib_u(8,ilist2) = list_ib_f_bot_u(8,ilist)  ! k3
-        f_list_ib_u(9,ilist2) = list_ib_f_bot_u(9,ilist)  ! j3
+      do ilist2 = 1,nlist_ib(ugrid)
+        ilist = list_pointer_u(ilist2)
+        f_list_ib_u(1,ilist2) = list_ib_bot_u(1,ilist)  ! i
+        f_list_ib_u(2,ilist2) = list_ib_bot_u(2,ilist)  ! k
+        f_list_ib_u(3,ilist2) = list_ib_bot_u(3,ilist)  ! j
+        f_list_ib_u(4,ilist2) = list_ib_bot_u(4,ilist)  ! i2
+        f_list_ib_u(5,ilist2) = list_ib_bot_u(5,ilist)  ! k2
+        f_list_ib_u(6,ilist2) = list_ib_bot_u(6,ilist)  ! j2
+        f_list_ib_u(7,ilist2) = list_ib_bot_u(7,ilist)  ! i3
+        f_list_ib_u(8,ilist2) = list_ib_bot_u(8,ilist)  ! k3
+        f_list_ib_u(9,ilist2) = list_ib_bot_u(9,ilist)  ! j3
 
-        w_list_ib_u(1,ilist2) = list_ib_f_w_bot_u(1,ilist)  ! w2
-        w_list_ib_u(2,ilist2) = list_ib_f_w_bot_u(2,ilist)  ! w3
+        w_list_ib_u(1,ilist2) = list_ib_w_bot_u(1,ilist)  ! Lap coef
+        w_list_ib_u(2,ilist2) = list_ib_w_bot_u(2,ilist)  ! w2
+        w_list_ib_u(3,ilist2) = list_ib_w_bot_u(3,ilist)  ! w3
       end do
       ! vgrid forcing points bottom
-      do ilist2 = 1,nlist_ib_f(vgrid)
-        ilist = list_pointer_f_v(ilist2)
-        f_list_ib_v(1,ilist2) = list_ib_f_bot_v(1,ilist)  ! i
-        f_list_ib_v(2,ilist2) = list_ib_f_bot_v(2,ilist)  ! k
-        f_list_ib_v(3,ilist2) = list_ib_f_bot_v(3,ilist)  ! j
-        f_list_ib_v(4,ilist2) = list_ib_f_bot_v(4,ilist)  ! i2
-        f_list_ib_v(5,ilist2) = list_ib_f_bot_v(5,ilist)  ! k2
-        f_list_ib_v(6,ilist2) = list_ib_f_bot_v(6,ilist)  ! j2
-        f_list_ib_v(7,ilist2) = list_ib_f_bot_v(7,ilist)  ! i3
-        f_list_ib_v(8,ilist2) = list_ib_f_bot_v(8,ilist)  ! k3
-        f_list_ib_v(9,ilist2) = list_ib_f_bot_v(9,ilist)  ! j3
+      do ilist2 = 1,nlist_ib(vgrid)
+        ilist = list_pointer_v(ilist2)
+        f_list_ib_v(1,ilist2) = list_ib_bot_v(1,ilist)  ! i
+        f_list_ib_v(2,ilist2) = list_ib_bot_v(2,ilist)  ! k
+        f_list_ib_v(3,ilist2) = list_ib_bot_v(3,ilist)  ! j
+        f_list_ib_v(4,ilist2) = list_ib_bot_v(4,ilist)  ! i2
+        f_list_ib_v(5,ilist2) = list_ib_bot_v(5,ilist)  ! k2
+        f_list_ib_v(6,ilist2) = list_ib_bot_v(6,ilist)  ! j2
+        f_list_ib_v(7,ilist2) = list_ib_bot_v(7,ilist)  ! i3
+        f_list_ib_v(8,ilist2) = list_ib_bot_v(8,ilist)  ! k3
+        f_list_ib_v(9,ilist2) = list_ib_bot_v(9,ilist)  ! j3
 
-        w_list_ib_v(1,ilist2) = list_ib_f_w_bot_v(1,ilist)  ! w2
-        w_list_ib_v(2,ilist2) = list_ib_f_w_bot_v(2,ilist)  ! w3
+        w_list_ib_v(1,ilist2) = list_ib_w_bot_v(1,ilist)  ! Lap coef
+        w_list_ib_v(2,ilist2) = list_ib_w_bot_v(2,ilist)  ! w2
+        w_list_ib_v(3,ilist2) = list_ib_w_bot_v(3,ilist)  ! w3
       end do
-      deallocate(list_pointer_s_u, list_pointer_s_v)
-      deallocate(list_pointer_f_u, list_pointer_f_v)
-      deallocate(list_ib_s_bot_u,list_ib_s_top_u)
-      deallocate(list_ib_s_bot_v,list_ib_s_top_v)
-      deallocate(list_ib_f_bot_u,list_ib_f_top_u)
-      deallocate(list_ib_f_bot_v,list_ib_f_top_v)
-      deallocate(list_ib_f_w_bot_u,list_ib_f_w_top_u)
-      deallocate(list_ib_f_w_bot_v,list_ib_f_w_top_v)
+      deallocate(list_pointer_u, list_pointer_v)
+      deallocate(list_ib_bot_u,list_ib_top_u)
+      deallocate(list_ib_bot_v,list_ib_top_v)
+      deallocate(list_ib_w_bot_u,list_ib_w_top_u)
+      deallocate(list_ib_w_bot_v,list_ib_w_top_v)
 
 ! SLAVES
 
     else
       ! The information is received by every proc
-      call MPI_RECV  (inputNu  ,2*np+1+5   ,MPI_INTEGER,0,20000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (inputNv  ,2*np+1+5   ,MPI_INTEGER,0,21000+myid,MPI_COMM_WORLD,status,ierr)
-      nlist_ib_s(ugrid) = inputNu(1)
-      nlist_ib_s(vgrid) = inputNv(1)
-      nlist_ib_f(ugrid) = inputNu(2*np+1+5)
-      nlist_ib_f(vgrid) = inputNv(2*np+1+5)
+      call MPI_RECV  (inputNu  ,2*np+1+4   ,MPI_INTEGER,0,20000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (inputNv  ,2*np+1+4   ,MPI_INTEGER,0,21000+myid,MPI_COMM_WORLD,status,ierr)
+      nlist_ib(ugrid) = inputNu(1)
+      nlist_ib(vgrid) = inputNv(1)
       do iproc = 0,np-1
         nyuIB1(iproc) = inputNu(iproc+2   )
         nyuIB2(iproc) = inputNu(iproc+2+np)
@@ -1497,32 +1366,16 @@ subroutine getbounds(myid,status,ierr)
       nyv12 = inputNv(2*np+1+3)
       nyv22 = inputNv(2*np+1+4)
 
-      allocate(s_list_ib_u(4,nlist_ib_s(ugrid)), s_list_ib_v(4,nlist_ib_s(vgrid)))
-      allocate(f_list_ib_u(9,nlist_ib_f(ugrid)), f_list_ib_v(9,nlist_ib_f(vgrid)))
-      allocate(w_list_ib_u(2,nlist_ib_f(ugrid)), w_list_ib_v(2,nlist_ib_f(vgrid)))
-      ! ATTENTION nlist_ib ugrid and vgrid are equal, otherwise it wont work
-      call MPI_RECV  (s_list_ib_u,4*nlist_ib_s(ugrid),MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (s_list_ib_v,4*nlist_ib_s(vgrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (f_list_ib_u,9*nlist_ib_f(ugrid),MPI_INTEGER,0,24000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (f_list_ib_v,9*nlist_ib_f(vgrid),MPI_INTEGER,0,25000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (w_list_ib_u,2*nlist_ib_f(ugrid),MPI_REAL8  ,0,26000+myid,MPI_COMM_WORLD,status,ierr)
-      call MPI_RECV  (w_list_ib_v,2*nlist_ib_f(vgrid),MPI_REAL8  ,0,27000+myid,MPI_COMM_WORLD,status,ierr)
-!if (myid == 7) then
-!  write(*,*) 'myid', myid
-!  write(*,*) 'nlist', nlist_ib_f(2)
-!  write(*,*)  'j', f_list_ib(3,100,2)
-!  write(*,*)  'w', w_list_ib(1,100,2)
-!end if
+      allocate(f_list_ib_u(9,nlist_ib(ugrid)), f_list_ib_v(9,nlist_ib(vgrid)))
+      allocate(w_list_ib_u(3,nlist_ib(ugrid)), w_list_ib_v(3,nlist_ib(vgrid)))
+      call MPI_RECV  (f_list_ib_u,9*nlist_ib(ugrid),MPI_INTEGER,0,22000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (f_list_ib_v,9*nlist_ib(vgrid),MPI_INTEGER,0,23000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (w_list_ib_u,3*nlist_ib(ugrid),MPI_REAL8  ,0,24000+myid,MPI_COMM_WORLD,status,ierr)
+      call MPI_RECV  (w_list_ib_v,3*nlist_ib(vgrid),MPI_REAL8  ,0,25000+myid,MPI_COMM_WORLD,status,ierr)
     end if
     deallocate(inputNu)
     deallocate(inputNv)
   end if
-!  write(*,*) 'myid', myid
-!  write(*,*) 'nlist', nlist_ib_f(2)
-!  write(*,*)  'j', f_list_ib(3,100,2)
-!  write(*,*)  'w', w_list_ib(1,100,2)
-!  call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-!  stop
 
 end subroutine
 

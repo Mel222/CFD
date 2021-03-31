@@ -754,7 +754,8 @@ subroutine solveU(u,du,myid)
     end do
   end do
 
-  call immersed_boundaries_U(u,du,myid)
+  call immersed_boundaries_U(u,du,ugrid,myid)
+!  stop
 
   call LUsolU(u,du,ugrid,myid)
 
@@ -785,7 +786,8 @@ subroutine solveV(u,du,myid)
     end do
   end do
 
-  call immersed_boundaries_V(u,du,myid)
+  call immersed_boundaries_V(u,du,vgrid,myid)
+!  stop 
 
   call LUsolV(u,du,vgrid,myid)
 
