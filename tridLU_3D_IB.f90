@@ -72,31 +72,33 @@ subroutine LUsolU(u,rhsu,grid,myid)
   type(cfield) u(sband:eband)
   type(cfield) rhsu(sband:eband)
     
-  real(8) , allocatable:: a(:,:,:,:)
+  real(8) , allocatable:: a(:,:)
 
-  !a(diag,column,j,iband)
-  allocate(a(3,maxval(columns_num),jlim(1,grid,2):jlim(2,grid,2),nband))
-  
 
   do iband = sband,eband
-    call LU_build(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
-    call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
-  enddo
 
-! Mel's version
-  do iband = sband,eband
+    allocate(a(3,jlim(1,grid,iband):jlim(2,grid,iband)))
+
     do column = 1,columns_num(iband,myid)
-      u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*a(2,column,jlim(1,grid,iband),iband)
+
+      call LU_buildU(jlim(1,grid,iband),jlim(2,grid,iband),column,myid,iband,a)
+      call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),myid,a)
+
+      ! Mel's version
+      u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*a(2,jlim(1,grid,iband))
       do j = jlim(1,grid,iband)+1,jlim(2,grid,iband)
-        u(iband)%f(j,column) = (rhsu(iband)%f(j,column)-a(1,column,j,iband)*u(iband)%f(j-1,column))*a(2,column,j,iband)
+        u(iband)%f(j,column) = (rhsu(iband)%f(j,column)-a(1,j)*u(iband)%f(j-1,column))*a(2,j)
       end do
       do j = jlim(2,grid,iband)-1,jlim(1,grid,iband),-1
-        u(iband)%f(j,column) =  u(iband)%f(j,column)-a(3,column,j,iband)*u(iband)%f(j+1,column)
+        u(iband)%f(j,column) =  u(iband)%f(j,column)-a(3,j)*u(iband)%f(j+1,column)
       end do
+
     end do
+
+    deallocate(a)
+
   enddo
 
-  deallocate(a)
   
 end subroutine
 
@@ -127,30 +129,33 @@ subroutine LUsolV(u,rhsu,grid,myid)
   type(cfield) rhsu(sband:eband)
   real(8), allocatable:: xPL(:,:,:)
     
-  real(8) , allocatable:: a(:,:,:,:)
+  real(8) , allocatable:: a(:,:)
 
-  !a(diag,column,j,iband)
-  allocate(a(3,maxval(columns_num),jlim(1,grid,2):jlim(2,grid,2),nband))
 
   do iband = sband,eband
-    call LU_build(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
-    call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),grid,myid,iband,a)
-  enddo
-  
-! Mel's version   
-  do iband = sband,eband
+ 
+    allocate(a(3,jlim(1,grid,iband):jlim(2,grid,iband)))
+ 
     do column = 1,columns_num(iband,myid)
-      u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*a(2,column,jlim(1,grid,iband),iband)
+
+      call LU_buildV(jlim(1,grid,iband),jlim(2,grid,iband),column,myid,iband,a)
+      call LU_dec(jlim(1,grid,iband),jlim(2,grid,iband),myid,a)
+
+      ! Mel's version   
+      u(iband)%f(jlim(1,grid,iband),column)=rhsu(iband)%f(jlim(1,grid,iband),column)*a(2,jlim(1,grid,iband))
       do j = jlim(1,grid,iband)+1,jlim(2,grid,iband)
-        u(iband)%f(j,column) = (rhsu(iband)%f(j,column)-a(1,column,j,iband)*u(iband)%f(j-1,column))*a(2,column,j,iband)
+        u(iband)%f(j,column) = (rhsu(iband)%f(j,column)-a(1,j)*u(iband)%f(j-1,column))*a(2,j)
       end do
       do j = jlim(2,grid,iband)-1,jlim(1,grid,iband),-1
-        u(iband)%f(j,column) =  u(iband)%f(j,column)-a(3,column,j,iband)*u(iband)%f(j+1,column)
+        u(iband)%f(j,column) =  u(iband)%f(j,column)-a(3,j)*u(iband)%f(j+1,column)
       end do
+
     end do
-  enddo
 
   deallocate(a)
+
+  enddo
+
 
 end subroutine
 
@@ -341,67 +346,69 @@ subroutine LUsol0(x,nystart,nyend)
 end subroutine
 
 
-subroutine LU_build(nystart,nyend,grid,myid,iband,a)
-!-------------------------------------------------------!
-!       specifies original values of a(1:3,j,i,k)       !
-!-------------------------------------------------------!
+subroutine LU_buildU(nystart,nyend,column,myid,iband,a)
 
   use declaration
   implicit none
-  integer i,k,j,grid,myid,column,iband
+  integer i,k,j,myid,column,iband
   integer nystart,nyend
   real(8) k2x,k2z,beta
- 
   
-  !a(diag,column,j,iband)
-  real(8) a(3,maxval(columns_num),jlim(1,grid,2):jlim(2,grid,2),nband)
+  real(8) a(3,nystart:nyend)
 
 
   beta = bRK(kRK)*dt/Re
-  
 
   !!!!!!!!!!!!!!!!!!!     u velocity:       !!!!!!!!!!!!!!!!!!!
-  if (grid==ugrid) then
-    do column = 1,columns_num(iband,myid)
       i = columns_i(column,iband,myid)
       k = columns_k(column,iband,myid)
       k2x = k2F_x(i)
       k2z = k2F_z(k)
-        a(1,column,nystart,iband) = 0d0
-        a(2,column,nystart,iband) = 1d0  
-        a(3,column,nystart,iband) = gridweighting(iband,1)!0d0 !ay(3,nystart)=0d0 !Free-shear -1 no-slip 0
-      do j = nystart+1,nyend-1
-        a(1,column,j      ,iband) =    -beta* dyu2i(1,j)
-        a(2,column,j      ,iband) = 1d0-beta*(dyu2i(2,j)+k2x+k2z)
-        a(3,column,j      ,iband) =    -beta* dyu2i(3,j)
-      end do
-        a(1,column,nyend  ,iband) = gridweighting(iband,2)!0d0 !Free-shear -1 no-slip 0
-        a(2,column,nyend  ,iband) = 1d0
-        a(3,column,nyend  ,iband) = 0d0
-    end do 
-    
-  !!!!!!!!!!!!!!!!!!!     v velocity:       !!!!!!!!!!!!!!!!!!!  
-  else if (grid==vgrid) then
 
-    do column = 1,columns_num(iband,myid)
+      a(1,nystart) = 0d0
+      a(2,nystart) = 1d0  
+      a(3,nystart) = gridweighting(iband,1)!0d0 !ay(3,nystart)=0d0 !Free-shear -1 no-slip 0
+      do j = nystart+1,nyend-1
+        a(1,j) =    -beta* dyu2i(1,j)
+        a(2,j) = 1d0-beta*(dyu2i(2,j)+k2x+k2z)
+        a(3,j) =    -beta* dyu2i(3,j)
+      end do
+      a(1,nyend) = gridweighting(iband,2)!0d0 !Free-shear -1 no-slip 0
+      a(2,nyend) = 1d0
+      a(3,nyend) = 0d0
+    
+end subroutine
+
+subroutine LU_buildV(nystart,nyend,column,myid,iband,a)
+
+  use declaration
+  implicit none
+  integer i,k,j,myid,column,iband
+  integer nystart,nyend
+  real(8) k2x,k2z,beta
+  
+  real(8) a(3,nystart:nyend)
+
+
+  beta = bRK(kRK)*dt/Re
+
+  !!!!!!!!!!!!!!!!!!!     v velocity:       !!!!!!!!!!!!!!!!!!!  
       i = columns_i(column,iband,myid)
       k = columns_k(column,iband,myid)
       k2x = k2F_x(i)
       k2z = k2F_z(k)
-        a(1,column,nystart,iband) = 0d0
-        a(2,column,nystart,iband) = 1d0  
-        a(3,column,nystart,iband) = 0d0
+
+      a(1,nystart) = 0d0
+      a(2,nystart) = 1d0  
+      a(3,nystart) = 0d0
       do j = nystart+1,nyend-1
-        a(1,column,j      ,iband) =    -beta* dyv2i(1,j)
-        a(2,column,j      ,iband) = 1d0-beta*(dyv2i(2,j)+k2x+k2z)
-        a(3,column,j      ,iband) =    -beta* dyv2i(3,j)
+        a(1,j) =    -beta* dyv2i(1,j)
+        a(2,j) = 1d0-beta*(dyv2i(2,j)+k2x+k2z)
+        a(3,j) =    -beta* dyv2i(3,j)
       end do
-        a(1,column,nyend  ,iband) = 0d0
-        a(2,column,nyend  ,iband) = 1d0
-        a(3,column,nyend  ,iband) = 0d0
-    end do
-  end if
-        
+      a(1,nyend) = 0d0
+      a(2,nyend) = 1d0
+      a(3,nyend) = 0d0
 
 end subroutine
 
@@ -511,7 +518,7 @@ subroutine LU_build0(nystart,nyend,a)
 
 end subroutine
 
-subroutine LU_dec(nystart,nyend,grid,myid,iband,a)
+subroutine LU_dec(nystart,nyend,myid,a)
 !----------------------------------------------------------------------*
 !         GIVEN 'a_j' FOR j=nystart:nyend
 !         PERFORMS a_j=L_j*U_j
@@ -540,16 +547,14 @@ subroutine LU_dec(nystart,nyend,grid,myid,iband,a)
   implicit none
   integer j,column,iband,myid,grid
   integer nystart,nyend
-  real(8) a(3,maxval(columns_num),jlim(1,grid,2):jlim(2,grid,2),nband)
 
+  real(8) a(3,nystart:nyend)
 
-  do column = 1,columns_num(iband,myid)
-    a(2,column,nystart,iband) = 1d0/a(2,column,nystart,iband)
+    a(2,nystart) = 1d0/a(2,nystart)
     do j = nystart+1,nyend
-      a(3,column,j-1,iband) = a(3,column,j-1,iband)*a(2,column,j-1,iband)
-      a(2,column,j  ,iband) = 1d0/(a(2,column,j,iband)-a(1,column,j,iband)*a(3,column,j-1,iband))
+      a(3,j-1) = a(3,j-1)*a(2,j-1)
+      a(2,j) = 1d0/(a(2,j)-a(1,j)*a(3,j-1))
     end do
-  end do  
 
 end subroutine
 
