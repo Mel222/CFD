@@ -215,7 +215,7 @@ endif
       post_spacing = Lz/ntilez
       !posth        = posth
       h_ny(1)      = 2.0d0*post_spacing
-      h_ny(1)      = 0.80d0
+!      h_ny(1)      = 0.80d0
       write(*,*) 'h_ny(1) ', h_ny(1)
 
     else
