@@ -133,13 +133,15 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
   do k_ele = 1, dstx
     do i_ele = 1, dstx
 
-      rig = test_circ(i_ele-1,k_ele  ) <= 0d0
-      lef = test_circ(i_ele+1,k_ele  ) <= 0d0
-      bot = test_circ(i_ele  ,k_ele+1) <= 0d0
-      top = test_circ(i_ele  ,k_ele-1) <= 0d0 
+      if (test_circ(i_ele, k_ele) .lt. 0d0) then
+
+      rig = test_circ(i_ele-1,k_ele  ) > 0d0
+      lef = test_circ(i_ele+1,k_ele  ) > 0d0
+      bot = test_circ(i_ele  ,k_ele+1) > 0d0
+      top = test_circ(i_ele  ,k_ele-1) > 0d0 
       
-      if (test_circ(i_ele, k_ele) .gt. 0d0) then
         if (rig .or. lef .or. bot .or. top) then
+!        if (.false.) then 
           ! This is a immersed boundary point
           interpp = 0
           weicoef = 0d0
@@ -147,7 +149,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
           xbound = 0d0
           call lin_interp(i_ele*1d0, k_ele*1d0, interpp, weicoef, zbound, xbound, radius, grid)
 
-          if (weicoef(1) < 0.2d0 .and. weicoef(2) < 0.2d0) then 
+!          if (weicoef(1) < 0.2d0 .and. weicoef(2) < 0.2d0) then 
             ! Add to IB list 
             nlist_xz = nlist_xz + 1
             list_ib_xz(1, nlist_xz) = i_ele
@@ -169,9 +171,25 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !write(*,*) 'xbound,zbound=', xbound,zbound
 !write(*,*) 'weighting    =', weicoef(1),weicoef(2),weicoef(3)
 !write(*,*)
-          end if 
+!          end if 
+        else
+            ! This is a solid point
+            nlist_xz = nlist_xz + 1
+            list_ib_xz(1, nlist_xz) = i_ele 
+            list_ib_xz(2, nlist_xz) = k_ele
+            list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
+            list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
+            list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
+            list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
+
+            list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
+            list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
+            list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
+            list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
+            list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
         end if
-      else
+      end if
+      if (test_circ(i_ele, k_ele) == 0d0) then
             ! This is a solid point
             nlist_xz = nlist_xz + 1
             list_ib_xz(1, nlist_xz) = i_ele 
