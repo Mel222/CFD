@@ -1,7 +1,7 @@
-subroutine y_grid_canopy
+subroutine y_grid_rough
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!   YGRID for canopies  !!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!   YGRID for roughness  !!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !  Creates the geometry in the y-direction
@@ -21,10 +21,10 @@ subroutine y_grid_canopy
 
    use declaration
    implicit none
-   integer j,iband, dny
+   integer j,iband,sumj
    real(8) aaa, bbb, aat, aab, dy1, dye, ccc, qqq
   
-   dny = dsty;
+!   dny = dsty;
    nn  = N(3,nband)+1
  print*, "nn = ", nn
    qqq = nn/2d0
@@ -32,8 +32,14 @@ subroutine y_grid_canopy
    bbb =-30d0*(dyq - 1d0)/((8d0*dyq + 7d0)*(qqq**(ppp-2)))
    ccc = 15d0*dyq/((8d0*dyq + 7d0)*qqq)
    dy1 = aaa*(-qqq)**4 + bbb*(-qqq)**2 + ccc
-   aab = (posth-dy1*dny)/(dny**3)
 
+   dny = ceiling(posth/dy1)
+   sumj = 0 
+   do j = -dny, -1 
+     sumj = sumj + j
+   end do 
+   ! Lineal (almost constant) stretching in the immersed boundary region (below y=-1)
+   aab = (posth-dy1*dny)/sumj
   
    dtheta     = 1d0
    dthetai    = 1d0/dtheta
@@ -69,24 +75,27 @@ subroutine y_grid_canopy
    else
 
 !!!! Grid inside canopies
- 
-      yu(-dny)    = aab*(-dny-.5d0)**3 + dy1*(-dny-0.5d0) -1d0
-      dthdyu(-dny)= 1d0/(3d0*aab*(-dny-.5d0)**2 + dy1) 
-      do j=-dny,-1
-        yv(j)  = aab*j**3 + dy1*j - 1d0
-        yu(j+1)= aab*(j+.5d0)**3 + dy1*(j+.5d0) -1d0
 
-        dthdyv(j)  = 1d0/(3d0*aab*(j)**2 + dy1) 
-        dthdyu(j+1)= 1d0/(3d0*aab*(j+.5d0)**2 + dy1)
+      yv(-dny)    = -1d0-posth
+      yu(-dny)    = yv(-dny)-dy1*0.5d0-aab*(-dny-0.5d0)*0.5d0
+      dthdyu(-dny)= 1d0/(dy1+aab*(-dny-1d0)) 
+      dthdyv(-dny)= 1d0/(dy1+aab*(-dny-0.5d0)) 
+      do j=-dny+1,-1
+        yv(j)  = yv(j-1)+dy1+aab*(j-1)
+        yu(j)= yu(j-1)+dy1+aab*(j-1.5d0)
+
+        dthdyv(j)  = 1d0/(dy1+aab*(j-0.5d0)) 
+        dthdyu(j)= 1d0/(dy1+aab*(j-1d0))
       end do
-         
+      yu(0) = yu(-1) +dy1+aab*(-1.5d0) 
+      dthdyu(0) = 1d0/(dy1+aab*(-1d0))  
 
       do j=0,dny
-        yv(j+nn)  = aab*(j)**3 + dy1*(j) +1d0
-        yu(j+nn+1)= aab*(j+.5d0)**3 + dy1*(j+.5d0) +1d0
+        yv(j+nn)  = yv(j+nn-1)+dy1-aab*j
+        yu(j+nn+1)= -yu(-j) 
 
-        dthdyv(j+nn)  = 1d0/(3d0*aab*(j)**2 + dy1) 
-        dthdyu(j+nn+1)= 1d0/(3d0*aab*(j+.5d0)**2 + dy1)
+        dthdyv(j+nn)  = 1d0/(dy1-aab*(j+0.5d0)) 
+        dthdyu(j+nn+1)= dthdyu(-j)
       end do
    end if
 
@@ -174,7 +183,7 @@ print*, "Shape u, v", shape(dthdyu), ", ", shape(dthdyv)
   Ny(pgrid,3  ) = N(4,3)-1
 
 
-open(10,file=trim(dirout)//'y_grid_canopy.dat',form='unformatted',access='stream')
+open(10,file=trim(dirout)//'y_grid_rough.dat',form='unformatted',access='stream')
 write(10) N, dny
 write(10) yu, yv, dthdyu, dthdyv
 write(10) dyu2i, dyv2i
