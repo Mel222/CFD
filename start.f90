@@ -226,7 +226,7 @@ endif
     close(40)
 
     ! Creates the geometry in the y-direction
-    call y_grid_canopy
+    call y_grid_rough
 
     allocate(u11(0:nn+2))
 
