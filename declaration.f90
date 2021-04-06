@@ -53,7 +53,7 @@ module declaration
 
   integer nribs,npeak !TODO remove
   integer dnx,dnz
-  integer ntilex,ntilez,dsty,dstx,dstz
+  integer ntilex,ntilez,dsty,dstx,dstz,dny
   integer npeakx,npeakz
   real(8) Lfracx,Lfracz
   real(8) dyub2,dyut2,dyvb2,dyvt2
