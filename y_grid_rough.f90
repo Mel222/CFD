@@ -21,7 +21,7 @@ subroutine y_grid_rough
 
    use declaration
    implicit none
-   integer j,iband,sumj
+   integer j,iband
    real(8) aaa, bbb, aat, aab, dy1, dye, ccc, qqq
   
 !   dny = dsty;
@@ -34,10 +34,6 @@ subroutine y_grid_rough
    dy1 = aaa*(-qqq)**4 + bbb*(-qqq)**2 + ccc
 
    dny = ceiling(posth/dy1)
-   sumj = 0 
-   do j = -dny, -1 
-     sumj = sumj + j
-   end do 
    ! Lineal (almost constant) stretching in the immersed boundary region (below y=-1)
    aab = -(posth - dy1*dny)/(dny*(dny+1d0))  
   
