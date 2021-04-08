@@ -39,7 +39,7 @@ subroutine y_grid_rough
      sumj = sumj + j
    end do 
    ! Lineal (almost constant) stretching in the immersed boundary region (below y=-1)
-   aab = (posth-dy1*dny)/sumj
+   aab = -(posth - dy1*dny)/(dny*(dny+1d0))  
   
    dtheta     = 1d0
    dthetai    = 1d0/dtheta
@@ -74,28 +74,28 @@ subroutine y_grid_rough
    
    else
 
-!!!! Grid inside canopies
+!!!!!! Grid inside roughness !!!!!!
+! Boundary conditions:
+! yv(0)    = -1
+! yv(nn/2) = 0
+! yv(nn)   = 1
 
-      yv(-dny)    = -1d0-posth
-      yu(-dny)    = yv(-dny)-dy1*0.5d0-aab*(-dny-0.5d0)*0.5d0
-      dthdyu(-dny)= 1d0/(dy1+aab*(-dny-1d0)) 
-      dthdyv(-dny)= 1d0/(dy1+aab*(-dny-0.5d0)) 
-      do j=-dny+1,-1
-        yv(j)  = yv(j-1)+dy1+aab*(j-1)
-        yu(j)= yu(j-1)+dy1+aab*(j-1.5d0)
+      yu(-dny)    = -1d0 + dy1*(-dny-0.5d0) + aab*(dny**2 + 2d0*dny + 0.75d0) ! ju=jv-0.5 
+      dthdyu(-dny)= 1d0/(dy1+2d0*aab*(-dny-1d0)) 
+      do j=-dny,-1
+        yv(j)  = -1d0 + dy1*j + aab*(j**2 - j)
+        yu(j+1)= -1d0 + dy1*(j+0.5d0) + aab*(j**2 - 0.25d0) ! ju=jv+0.5
 
-        dthdyv(j)  = 1d0/(dy1+aab*(j-0.5d0)) 
-        dthdyu(j)= 1d0/(dy1+aab*(j-1d0))
+        dthdyv(j)  = 1d0/(dy1+2d0*aab*(j-0.5d0)) 
+        dthdyu(j+1)= 1d0/(dy1+2d0*aab*j)
       end do
-      yu(0) = yu(-1) +dy1+aab*(-1.5d0) 
-      dthdyu(0) = 1d0/(dy1+aab*(-1d0))  
 
-      do j=0,dny
-        yv(j+nn)  = yv(j+nn-1)+dy1-aab*j
-        yu(j+nn+1)= -yu(-j) 
+      do j=0,dny ! Need to flip about the y axis and j axis hence different signs 
+        yv(j+nn)  = 1d0 + dy1*j - aab*(j**2 + j)
+        yu(j+nn+1)= 1d0 + dy1*(j+0.5d0) - aab*(j**2 + 2d0*j + 0.75d0) ! ju=jv+0.5
 
-        dthdyv(j+nn)  = 1d0/(dy1-aab*(j+0.5d0)) 
-        dthdyu(j+nn+1)= dthdyu(-j)
+        dthdyv(j+nn)  = 1d0/(dy1-2d0*aab*(j+0.5d0))  
+        dthdyu(j+nn+1)= 1d0/(dy1-2d0*aab*(j+1d0))
       end do
    end if
 
