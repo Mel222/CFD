@@ -670,7 +670,7 @@ subroutine ygrid
 
   use declaration
   implicit none
-  integer j,iband,sumj,dny
+  integer j,iband,sumj
   real(8) aaa,bbb,qqq,dy0,ddy,y0
 
   nn  = N(3,nband)+1 !v points (as collocated points)
