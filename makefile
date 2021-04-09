@@ -33,7 +33,7 @@ CALCDIR = $(INIT)
 
 OBJECTS = $(OBJ)/declaration.o\
           $(OBJ)/start.o\
-          $(OBJ)/y_grid_rough.o\
+          $(OBJ)/y_grid_canopy.o\
           $(OBJ)/geom_circ_rough_force_outside.o\
           $(OBJ)/stats.o\
           $(OBJ)/spectra.o\
@@ -63,9 +63,9 @@ $(OBJDIR)/start.o : $(SRCDIR)/start.f90 $(SRCDIR)/makefile
 	@echo compiling start.f90
 	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/start.f90
 
-$(OBJDIR)/y_grid_rough.o : $(SRCDIR)/y_grid_rough.f90 $(SRCDIR)/makefile
-	@echo compiling y_grid_rough.f90
-	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/y_grid_rough.f90
+$(OBJDIR)/y_grid_canopy.o : $(SRCDIR)/y_grid_canopy.f90 $(SRCDIR)/makefile
+	@echo compiling y_grid_canopy.f90
+	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/y_grid_canopy.f90
 
 $(OBJDIR)/geom_circ_rough_force_outside.o : $(SRCDIR)/geom_circ_rough_force_outside.f90 $(SRCDIR)/makefile
 	@echo compiling geom_circ_rough_force_outside.f90

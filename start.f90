@@ -226,7 +226,8 @@ endif
     close(40)
 
     ! Creates the geometry in the y-direction
-    call y_grid_rough
+    call y_grid_canopy
+!    call y_grid_rough
 
     allocate(u11(0:nn+2))
 
@@ -670,7 +671,7 @@ subroutine ygrid
 
   use declaration
   implicit none
-  integer j,iband,sumj
+  integer j,iband,sumj,dny
   real(8) aaa,bbb,qqq,dy0,ddy,y0
 
   nn  = N(3,nband)+1 !v points (as collocated points)
