@@ -551,7 +551,7 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, gr
 
   real(8), allocatable :: dist(:)
 
-  n_segm = 10000
+  n_segm = 100000
 
   allocate(dist(n_segm))
 
