@@ -171,12 +171,15 @@ subroutine start(myid,status,ierr)
       end if 
     end if 
     read(40,10) posth         ! riblet height to width ratio
+    read(40,10) posth1        ! location of turning point from canopy tip
+    read(40,10) hny           ! Height of band 1 above canopy tips
     read(40,20) npeakx        ! number of points representing the blade tip
     read(40,20) npeakz        ! number of points representing the blade tip
     read(40,10) Lfracx        ! number of points representing the blade tip
     read(40,10) Lfracz        ! number of points representing the blade tip
     read(40,10) shift_stag    ! fraction of spacing that 2nd row is shifted 
     read(40,20) dsty          ! number of points representing canopy in y 
+    read(40,20) dsty1         ! Number of points representing top half canopy    
     read(40,20) dstx          ! number of points representing canopy in x
     read(40,20) dstz          ! number of points representing canopy in z
     
@@ -203,19 +206,17 @@ subroutine start(myid,status,ierr)
     elseif (geometry_type == 1) then
       post_spacing = Lz/ntilez
       h_ny(1)      = 1.5d0*post_spacing
-h_ny(1)      = 0.75d0*post_spacing
-print *, "h_ny(1)      = 0.75d0*post_spacing"
-! h_ny(1)      = .25d0
-! print *, "h_ny(1)      = .25d0"
-if(Lfracx==0.and.Lfracz==0)then
-h_ny(1)=0.25d0
-endif
+      h_ny(1)      = 0.75d0*post_spacing
+      print *, "h_ny(1)      = 0.75d0*post_spacing"
+      ! h_ny(1)      = .25d0
+      ! print *, "h_ny(1)      = .25d0"
+      if(Lfracx==0.and.Lfracz==0)then
+        h_ny(1)=0.25d0
+      endif
 
     elseif (geometry_type == 3) then
       post_spacing = Lz/ntilez
-      !posth        = posth
-      h_ny(1)      = 2.0d0*post_spacing
-!      h_ny(1)      = 0.80d0
+      h_ny(1)      = hny*posth
       write(*,*) 'h_ny(1) ', h_ny(1)
 
     else
