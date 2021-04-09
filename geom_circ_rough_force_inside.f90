@@ -35,7 +35,7 @@ subroutine boundary_circ_rough
 
   use declaration
   implicit none
-  integer k_ele, i_ele, j,ilist,ilist_xz,ix,iz,shift,grid
+  integer k_ele, i_ele, j,ilist,ilist_xz,ix,iz,shift
   integer nlist_xz, nlist_ib_bot_v, nlist_ib_bot_u  
   integer shift_x, shift_z 
   integer points_stem_v, points_stem_u  
@@ -43,7 +43,7 @@ subroutine boundary_circ_rough
   integer, allocatable:: list_ib_bot_u(:,:), list_ib_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_u(:,:), list_ib_w_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_v(:,:), list_ib_w_top_v(:,:)  
-  real(8) :: radius
+  real(8) :: radius, c_i, c_k
   
   real(8), allocatable :: test_circ(:,:) 
   integer, allocatable :: list_ib_xz(:,:)  
@@ -113,7 +113,9 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !    0 1  centre  dstx
 !
 ! centre point (1+(dstx-1)/2, 1+(dstx-1)/2)
-  radius = (dstx-1)/2d0
+  radius = (dstx-2d0)/2d0
+  c_i = 1d0 + (dstx-1d0)/2d0
+  c_k = 1d0 + (dstx-1d0)/2d0
 
   allocate(test_circ(0:dstx+1,0:dstx+1))
   ! Too big but doesnt matter MEL
@@ -122,7 +124,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
   do k_ele = 0, dstx+1
     do i_ele = 0, dstx+1
-      test_circ(i_ele, k_ele) = circ(i_ele*1d0, k_ele*1d0, radius)
+      test_circ(i_ele, k_ele) = circ(i_ele*1d0, k_ele*1d0, radius, c_i, c_k)
     end do
   end do
 
@@ -147,9 +149,24 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
           weicoef = 0d0
           zbound = 0d0
           xbound = 0d0
-          call lin_interp(i_ele*1d0, k_ele*1d0, interpp, weicoef, zbound, xbound, radius, grid)
+          call lin_interp(i_ele*1d0, k_ele*1d0, interpp, weicoef, zbound, xbound, radius, c_i, c_k)
 
-!          if (weicoef(1) < 0.2d0 .and. weicoef(2) < 0.2d0) then 
+          if (weicoef(1) > -0.02d0 .and. weicoef(2) > -0.02d0) then 
+            ! This is a solid point
+            nlist_xz = nlist_xz + 1
+            list_ib_xz(1, nlist_xz) = i_ele 
+            list_ib_xz(2, nlist_xz) = k_ele
+            list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
+            list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
+            list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
+            list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
+
+            list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
+            list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
+            list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
+            list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
+            list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
+          else
             ! Add to IB list 
             nlist_xz = nlist_xz + 1
             list_ib_xz(1, nlist_xz) = i_ele
@@ -164,14 +181,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
             list_ib_w_xz(3, nlist_xz) = xbound ! i of circular boundary point
             list_ib_w_xz(4, nlist_xz) = zbound ! k of circular boundary point
             list_ib_w_xz(5, nlist_xz) = 1d0 ! Laplacian coefficient 
-
-!write(*,*) 'forcing i, j =', i_ele, k_ele
-!write(*,*) 'fluid2  i, j =', interpp(2),interpp(1)
-!write(*,*) 'fluid3  i, j =', interpp(4),interpp(3)
-!write(*,*) 'xbound,zbound=', xbound,zbound
-!write(*,*) 'weighting    =', weicoef(1),weicoef(2),weicoef(3)
-!write(*,*)
-!          end if 
+          end if 
         else
             ! This is a solid point
             nlist_xz = nlist_xz + 1
@@ -544,36 +554,36 @@ print*, "Geom complete"
  
 end subroutine 
 
-real(8) function circ(x, z, r)
+real(8) function circ(x, z, r, c_i, c_k)
   
   implicit none 
 
-  real(8) :: x, z, r
+  real(8) :: x, z, r, c_i, c_k
 
-  circ = (x - (r + 1))**2 + (z - (r + 1))**2 - r**2
+  circ = (x - c_i)**2 + (z - c_k)**2 - r**2
 
 end function
 
-subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, grid)
+subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_i, c_k)
 
   use declaration
   implicit none
 
   real(8) :: i_ele, k_ele, x, z
   integer :: z2, x2, z3, x3, interpp(4)
-  integer :: n_z_sign, n_x_sign, aa, grid 
+  integer :: n_z_sign, n_x_sign, aa 
   integer :: n_segm, segm, min_loc(1)
-  real(8) :: radius, min_dist
+  real(8) :: radius, min_dist, c_i, c_k
   real(8) :: zbound, xbound, n_z, n_x
   real(8) :: weicoef(2), denominator 
 
   real(8), allocatable :: dist(:)
 
-  n_segm = 10000
+  n_segm = 20000
 
   allocate(dist(n_segm))
 
-  if (i_ele .ge. 1d0+radius) then
+  if (i_ele .ge. c_i) then
     aa = 1d0
   else
     aa = -1d0
@@ -584,80 +594,100 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, gr
 !  write(*,*) 'k_ele', k_ele
 
   do segm = 1, n_segm
-    z = (segm-1d0)*2d0*radius/(n_segm-1d0) +1d0
-    x = aa*sqrt(radius**2-(z-(radius+1d0))**2) + radius + 1d0 
+    z = (segm-1d0)*2d0*radius/(n_segm-1d0) + c_k - radius
+    x = aa*sqrt(radius**2-(z-c_k)**2) + c_i
     dist(segm) = sqrt((x-i_ele)**2 + (z-k_ele)**2) 
   end do
 
   min_dist = minval(dist)
   min_loc = minloc(dist)
 
-  zbound = (min_loc(1)-1d0)*2d0*radius/(n_segm-1d0) + 1d0
-  xbound = aa*sqrt(radius**2-(zbound-(radius+1d0))**2) + radius + 1d0
+  zbound = (min_loc(1)-1d0)*2d0*radius/(n_segm-1d0) + c_k - radius
+  xbound = aa*sqrt(radius**2-(zbound-c_k)**2) + c_i
 
 !  write(*,*) 'min_dist', min_dist 
 !  write(*,*) 'min_loc(1)', min_loc(1)
 !  write(*,*) 'xbound', xbound, 'zbound', zbound
 !  write(*,*)
 
-  n_z = (zbound-(radius+1d0))/sqrt((zbound-(radius+1d0))**2+(xbound-(radius+1d0))**2)
-  n_x = (xbound-(radius+1d0))/sqrt((zbound-(radius+1d0))**2+(xbound-(radius+1d0))**2)
+  n_z = (zbound-c_k)/sqrt((zbound-c_k)**2+(xbound-c_i)**2)
+  n_x = (xbound-c_i)/sqrt((zbound-c_k)**2+(xbound-c_i)**2)
 
-  n_z_sign = n_z / abs(n_z)
-  n_x_sign = n_x / abs(n_x)
 
-!write(*,*) 'i_ele, k_ele', i_ele, k_ele
-!write(*,*) 'n_x', n_x
-!write(*,*) 'n_z', n_z
-!write(*,*) 'n_x_sign', n_x_sign
-!write(*,*) 'n_z_sign', n_z_sign
-!write(*,*) 'i_ele -r', abs(i_ele-radius-1d0)
-!write(*,*) 'k_ele -r', abs(k_ele-radius-1d0)
-!write(*,*) 
+  if (i_ele .eq. c_i) then 
+  ! Back and front of circle  
+    n_z_sign = n_z / abs(n_z)
 
-  if (abs(i_ele-radius-1d0) .eq. abs(k_ele-radius-1d0)) then
-!  if (abs(n_x) .eq. abs(n_z)) then !only accurate to 3dp so doesnt work
-  ! Diagonal point 
     z2 = k_ele + n_z_sign
-    x2 = i_ele  
-    z3 = k_ele 
-    x3 = i_ele + n_x_sign 
-
-  elseif (abs(n_x) .lt. abs(n_z)) then 
-  ! Between 10.5 o clock and 1.5 o clock  
-  ! Between 4.5 o clock and 7.5 o clock 
-    z2 = k_ele + n_z_sign
-    x2 = i_ele   
+    x2 = i_ele
     z3 = k_ele + n_z_sign
-    x3 = i_ele + n_x_sign
+    x3 = i_ele
 
-  elseif (abs(n_x) .gt. abs(n_z)) then 
-  ! Between 1.5 o clock and 4.5 o clock 
-  ! Between 1.5 o clock and 4.5 o clock 
+    weicoef(1) = -1d0 
+    weicoef(2) =  0d0
+
+  elseif (k_ele .eq. c_k) then
+  ! Top and bot of circle
+    n_x_sign = n_x / abs(n_x)
+
     z2 = k_ele 
-    x2 = i_ele + n_x_sign 
-    z3 = k_ele + n_z_sign
+    x2 = i_ele + n_x_sign
+    z3 = k_ele 
     x3 = i_ele + n_x_sign
 
-  else
+    weicoef(1) = -1d0
+    weicoef(2) =  0d0
+
+  else  
+
+    n_z_sign = n_z / abs(n_z)
+    n_x_sign = n_x / abs(n_x)
+
+    if (abs(i_ele-c_i) .eq. abs(k_ele-c_k)) then
+  !  if (abs(n_x) .eq. abs(n_z)) then !only accurate to 3dp so doesnt work
+    ! Diagonal point 
+      z2 = k_ele + n_z_sign
+      x2 = i_ele  
+      z3 = k_ele 
+      x3 = i_ele + n_x_sign 
+
+    elseif (abs(n_x) .lt. abs(n_z)) then 
+    ! Between 10.5 o clock and 1.5 o clock  
+    ! Between 4.5 o clock and 7.5 o clock 
+      z2 = k_ele + n_z_sign
+      x2 = i_ele   
+      z3 = k_ele + n_z_sign
+      x3 = i_ele + n_x_sign
+
+    elseif (abs(n_x) .gt. abs(n_z)) then 
+    ! Between 1.5 o clock and 4.5 o clock 
+    ! Between 1.5 o clock and 4.5 o clock 
+      z2 = k_ele 
+      x2 = i_ele + n_x_sign 
+      z3 = k_ele + n_z_sign
+      x3 = i_ele + n_x_sign
+
+    else
+    write(*, *) radius, c_i, c_k
+    write(*,*) i_ele, k_ele, n_x, n_z
+    write(*,*) 'Mel fucked up'
+    stop
  
-  write(*,*) 'Mel fucked up'
-  stop
- 
-  end if
+    end if
+
+    denominator=  (xbound*z2 - x2*zbound - xbound*z3 + x3*zbound + x2*z3 - x3*z2)
+
+
+    weicoef(1) = -(xbound*z3 - x3*zbound - xbound*k_ele + i_ele*zbound + x3*k_ele - i_ele*z3)/denominator
+
+    weicoef(2) =  (xbound*z2 - x2*zbound - xbound*k_ele + i_ele*zbound + x2*k_ele - i_ele*z2)/denominator 
+
+  end if 
 
   interpp(1) = z2 
   interpp(2) = x2 
   interpp(3) = z3 
   interpp(4) = x3 
-
-  denominator=  (xbound*z2 - x2*zbound - xbound*z3 + x3*zbound + x2*z3 - x3*z2)
-
-!  weicoef(1) =  (x2*z3 - x3*z2 - x2*k_ele + i_ele*z2 + x3*k_ele - i_ele*z3)/denominator ! weighting for boundary point if v is non-zero
-
-  weicoef(1) = -(xbound*z3 - x3*zbound - xbound*k_ele + i_ele*zbound + x3*k_ele - i_ele*z3)/denominator
-
-  weicoef(2) =  (xbound*z2 - x2*zbound - xbound*k_ele + i_ele*zbound + x2*k_ele - i_ele*z2)/denominator 
 
   deallocate(dist)
 
