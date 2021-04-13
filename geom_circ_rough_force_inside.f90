@@ -113,9 +113,14 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !    0 1  centre  dstx
 !
 ! centre point (1+(dstx-1)/2, 1+(dstx-1)/2)
-  radius = (dstx-2d0)/2d0
-  c_i = 1d0 + (dstx-1d0)/2d0
-  c_k = 1d0 + (dstx-1d0)/2d0
+! Even diamter 
+!  radius = (dstx-2d0)/2d0
+!  c_i = 1d0 + (dstx-1d0)/2d0
+!  c_k = 1d0 + (dstx-1d0)/2d0
+! Odd diameter
+  radius = (dstx-1d0)/2d0
+  c_i = 1.5d0 + (dstx-1d0)/2d0
+  c_k = 1.5d0 + (dstx-1d0)/2d0
 
   allocate(test_circ(0:dstx+1,0:dstx+1))
   ! Too big but doesnt matter MEL
@@ -151,7 +156,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
           xbound = 0d0
           call lin_interp(i_ele*1d0, k_ele*1d0, interpp, weicoef, zbound, xbound, radius, c_i, c_k)
 
-          if (weicoef(1) > -0.02d0 .and. weicoef(2) > -0.02d0) then 
+          if (weicoef(1) > -0.04d0 .and. weicoef(2) > -0.04d0) then 
             ! This is a solid point
             nlist_xz = nlist_xz + 1
             list_ib_xz(1, nlist_xz) = i_ele 
