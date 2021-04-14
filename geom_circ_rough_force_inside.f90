@@ -83,15 +83,15 @@ subroutine boundary_circ_rough
   dnz = Ngal(2,1)/ntilez  ! Width:  Number of points per tile the in spanwise   direction
   shift_x = 2!0.5d0*( dstx)
   shift_z = 2!0.5d0*( dstz)
-  nyu11 = -dny+1
+  nyu11 = -dsty+1
   nyu21 = 0
-  nyv11 = -dny+1        ! Dont want to include wall point in IB list
+  nyv11 = -dsty+1        ! Dont want to include wall point in IB list
   nyv21 = 0-1            !-1 To make the boundary align with u_grid
 
-  nyu12 = Ngal(4,3)-dny+1
+  nyu12 = Ngal(4,3)-dsty+1
   nyu22 = Ngal(4,3)
 
-  nyv12 = Ngal(3,3)+1-dny+1  !+1 To make the boundary align with u_grid
+  nyv12 = Ngal(3,3)+1-dsty+1  !+1 To make the boundary align with u_grid
   nyv22 = Ngal(3,3)           ! Dont want to include wall point in IB list
 
 
@@ -114,13 +114,13 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !
 ! centre point (1+(dstx-1)/2, 1+(dstx-1)/2)
 ! Even diamter 
-!  radius = (dstx-2d0)/2d0
-!  c_i = 1d0 + (dstx-1d0)/2d0
-!  c_k = 1d0 + (dstx-1d0)/2d0
+  radius = (dstx-2d0)/2d0
+  c_i = 1d0 + (dstx-1d0)/2d0
+  c_k = 1d0 + (dstx-1d0)/2d0
 ! Odd diameter
-  radius = (dstx-1d0)/2d0
-  c_i = 1.5d0 + (dstx-1d0)/2d0
-  c_k = 1.5d0 + (dstx-1d0)/2d0
+!  radius = (dstx-1d0)/2d0
+!  c_i = 1.5d0 + (dstx-1d0)/2d0
+!  c_k = 1.5d0 + (dstx-1d0)/2d0
 
   allocate(test_circ(0:dstx+1,0:dstx+1))
   ! Too big but doesnt matter MEL
@@ -238,8 +238,8 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
 ! CREATE FIRST STEM MEL
 
-  points_stem_u   = dny*nlist_xz
-  points_stem_v   = (dny-1)*nlist_xz
+  points_stem_u   = dsty*nlist_xz
+  points_stem_v   = (dsty-1)*nlist_xz
   nlist_ib_bot_u   = ntilex*ntilez*points_stem_u      ! Number of points in all stems.
   nlist_ib_bot_v   = ntilex*ntilez*points_stem_v  
 
