@@ -216,7 +216,8 @@ subroutine start(myid,status,ierr)
 
     elseif (geometry_type == 3) then
       post_spacing = Lz/ntilez
-      h_ny(1)      = hny*posth
+!      h_ny(1)      = hny*posth
+      h_ny(1)      = 2.0d0*post_spacing
       write(*,*) 'h_ny(1) ', h_ny(1)
 
     else
