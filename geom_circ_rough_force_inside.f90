@@ -37,13 +37,13 @@ subroutine boundary_circ_rough
   implicit none
   integer k_ele, i_ele, j,ilist,ilist_xz,ix,iz,shift
   integer nlist_xz, nlist_ib_bot_v, nlist_ib_bot_u  
-  integer shift_x, shift_z 
   integer points_stem_v, points_stem_u  
   integer, allocatable:: list_ib_bot_v(:,:), list_ib_top_v(:,:)  
   integer, allocatable:: list_ib_bot_u(:,:), list_ib_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_u(:,:), list_ib_w_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_v(:,:), list_ib_w_top_v(:,:)  
-  real(8) :: radius, c_i, c_k
+  real(8) :: r, c_i, c_k
+  integer dstx1, dstx2, dstz1, dstz2
   
   real(8), allocatable :: test_circ(:,:) 
   integer, allocatable :: list_ib_xz(:,:)  
@@ -52,8 +52,23 @@ subroutine boundary_circ_rough
   integer :: interpp(4)
   real(8) :: weicoef(2), zbound, xbound, circ
 
-  
-  ! Check that the number of grid points in x and z is a multiple of the number of tiles 
+
+! Define the limits of the IB in the y direction   
+  nyu11 = -dsty+1
+  nyu21 = 0
+  nyv11 = -dsty+1        ! Dont want to include wall point in IB list
+  nyv21 = 0-1            !-1 To make the boundary align with u_grid
+
+  nyu12 = Ngal(4,3)-dsty+1
+  nyu22 = Ngal(4,3)
+
+  nyv12 = Ngal(3,3)+1-dsty+1  !+1 To make the boundary align with u_grid
+  nyv22 = Ngal(3,3)           ! Dont want to include wall point in IB list
+
+print*, "nyv11, 21, 12, 22", nyv11, nyv21, nyv12, nyv22
+print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
+
+! Check that the number of grid points in x and z is a multiple of the number of tiles 
   if (ntilex.eq.0) then
     write(*,*) 'ERROR: ntilex equals 0'
     stop
@@ -74,62 +89,53 @@ subroutine boundary_circ_rough
     write(*,*) 'ERROR: nz not multiple of ntilez'
     stop
   end if
-  if (mod(dstx,2).eq.0) then
-    write(*,*) 'WARNING: would be better if dstx was odd'
-    stop
-  end if
 
   dnx = Ngal(1,1)/ntilex  ! Width:  Number of points per tile the in streamwise direction
   dnz = Ngal(2,1)/ntilez  ! Width:  Number of points per tile the in spanwise   direction
-  shift_x = 2!0.5d0*( dstx)
-  shift_z = 2!0.5d0*( dstz)
-  nyu11 = -dsty+1
-  nyu21 = 0
-  nyv11 = -dsty+1        ! Dont want to include wall point in IB list
-  nyv21 = 0-1            !-1 To make the boundary align with u_grid
-
-  nyu12 = Ngal(4,3)-dsty+1
-  nyu22 = Ngal(4,3)
-
-  nyv12 = Ngal(3,3)+1-dsty+1  !+1 To make the boundary align with u_grid
-  nyv22 = Ngal(3,3)           ! Dont want to include wall point in IB list
 
 
-print*, "nyv11, 21, 12, 22", nyv11, nyv21, nyv12, nyv22
-print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
-
-! CREATE CIRCULAR CROSS SECTION IN I-K PLANE MEL
+! CREATE CIRCULAR CROSS SECTION IN I-K PLANE FOR ONE TILE
 !
-!    i
-!    ^
-!    |      ___          dstx
-!    |   _-     -_
-!    |  -         -
-!    | *     *     *     1+(dtsx-1)/2
-!    |  _         _
-!    |   -       -
-! 1  |      ---          1
-! 0 -|-----------------> k
-!    0 1  centre  dstx
-!
-! centre point (1+(dstx-1)/2, 1+(dstx-1)/2)
-! Even diamter 
-  radius = (dstx-2d0)/2d0
-  c_i = 1d0 + (dstx-1d0)/2d0
-  c_k = 1d0 + (dstx-1d0)/2d0
-! Odd diameter
-!  radius = (dstx-1d0)/2d0
-!  c_i = 1.5d0 + (dstx-1d0)/2d0
-!  c_k = 1.5d0 + (dstx-1d0)/2d0
+!      k
+!      ^
+!      |      ___          
+!      |   _-     -_
+!      |  -         -
+!  c_k | *     *     *     
+!      |  _         _
+!      |   -       -
+!      |      ---          
+! 0.5 -|-----------------> i
+!     0.5     c_i  
 
-  allocate(test_circ(0:dstx+1,0:dstx+1))
-  ! Too big but doesnt matter MEL
-  allocate(list_ib_xz(  6,dstx*dstx)) ! READ IN 
-  allocate(list_ib_w_xz(5,dstx*dstx)) ! READ IN 
+! READ IN POSITION OF CIRCLES 
+  r = 4.5d0
+  c_i = 9d0
+  c_k = 9d0
 
-  do k_ele = 0, dstx+1
-    do i_ele = 0, dstx+1
-      test_circ(i_ele, k_ele) = circ(i_ele*1d0, k_ele*1d0, radius, c_i, c_k)
+! LIMITS OF THE SQUARE WHICH CONTAINS THE CIRCLE
+  dstx1 = floor(  c_i-r-1);
+  dstx2 = ceiling(c_i+r+1);
+  dstz1 = floor(  c_k-r-1);
+  dstz2 = ceiling(c_k+r+1);
+
+  if (dstx1 <= 2 .or. dstz1 <= 2) then
+    write(*,*)'Circ too close to edge'
+    stop
+  end if
+
+  if (dstx2 >= dnx-1 .or. dstz2 >= dnz-1) then  
+    write(*,*) 'Circ too close to edge'
+    stop
+  end if 
+ 
+  allocate(test_circ(dstx1:dstx2, dstz1:dstz2))
+  allocate(list_ib_xz(  6,(dstx2-dstx1)*(dstz2-dstz1)))  
+  allocate(list_ib_w_xz(5,(dstx2-dstx1)*(dstz2-dstz1)))  
+
+  do k_ele = dstz1, dstz2
+    do i_ele = dstx1, dstx2
+      test_circ(i_ele, k_ele) = circ(i_ele*1d0, k_ele*1d0, r, c_i, c_k)
     end do
   end do
 
@@ -137,97 +143,79 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
   list_ib_xz = 0
   list_ib_w_xz = 0d0
 
-  do k_ele = 1, dstx
-    do i_ele = 1, dstx
+  do k_ele = dstz1+1, dstz2-1
+    do i_ele = dstx1+1, dstx2-1
 
       if (test_circ(i_ele, k_ele) .lt. 0d0) then
+        ! Inside the circle  
 
-      rig = test_circ(i_ele-1,k_ele  ) > 0d0
-      lef = test_circ(i_ele+1,k_ele  ) > 0d0
-      bot = test_circ(i_ele  ,k_ele+1) > 0d0
-      top = test_circ(i_ele  ,k_ele-1) > 0d0 
+        rig = test_circ(i_ele-1,k_ele  ) > 0d0
+        lef = test_circ(i_ele+1,k_ele  ) > 0d0
+        bot = test_circ(i_ele  ,k_ele+1) > 0d0
+        top = test_circ(i_ele  ,k_ele-1) > 0d0 
       
         if (rig .or. lef .or. bot .or. top) then
-!        if (.false.) then 
-          ! This is a immersed boundary point
+          ! This is a forcing point
           interpp = 0
           weicoef = 0d0
           zbound = 0d0
           xbound = 0d0
-          call lin_interp(i_ele*1d0, k_ele*1d0, interpp, weicoef, zbound, xbound, radius, c_i, c_k)
+          call lin_interp(i_ele*1d0, k_ele*1d0, interpp, weicoef, zbound, xbound, r, c_i, c_k)
 
-          if (weicoef(1) > -0.04d0 .and. weicoef(2) > -0.04d0) then 
-            ! This is a solid point
-            nlist_xz = nlist_xz + 1
-            list_ib_xz(1, nlist_xz) = i_ele 
-            list_ib_xz(2, nlist_xz) = k_ele
-            list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
-            list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
-            list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
-            list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
+          nlist_xz = nlist_xz + 1
+          list_ib_xz(1, nlist_xz) = i_ele
+          list_ib_xz(2, nlist_xz) = k_ele
+          list_ib_xz(3, nlist_xz) = interpp(2)   ! i of fluid point 2
+          list_ib_xz(4, nlist_xz) = interpp(1)   ! k of fluid point 2
+          list_ib_xz(5, nlist_xz) = interpp(4)   ! i of fluid point 3
+          list_ib_xz(6, nlist_xz) = interpp(3)   ! k of fluid point 3
 
-            list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
-            list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
-            list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
-            list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
-            list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
-          else
-            ! Add to IB list 
-            nlist_xz = nlist_xz + 1
-            list_ib_xz(1, nlist_xz) = i_ele
-            list_ib_xz(2, nlist_xz) = k_ele
-            list_ib_xz(3, nlist_xz) = interpp(2)   ! i of fluid point 2
-            list_ib_xz(4, nlist_xz) = interpp(1)   ! k of fluid point 2
-            list_ib_xz(5, nlist_xz) = interpp(4)   ! i of fluid point 3
-            list_ib_xz(6, nlist_xz) = interpp(3)   ! k of fluid point 3
+          list_ib_w_xz(1, nlist_xz) = weicoef(1) ! weighting of fluid point 2
+          list_ib_w_xz(2, nlist_xz) = weicoef(2) ! weighting of fluid point 3
+          list_ib_w_xz(3, nlist_xz) = xbound ! i of circular boundary point
+          list_ib_w_xz(4, nlist_xz) = zbound ! k of circular boundary point
+          list_ib_w_xz(5, nlist_xz) = 1d0 ! Laplacian coefficient 
 
-            list_ib_w_xz(1, nlist_xz) = weicoef(1) ! weighting of fluid point 2
-            list_ib_w_xz(2, nlist_xz) = weicoef(2) ! weighting of fluid point 3
-            list_ib_w_xz(3, nlist_xz) = xbound ! i of circular boundary point
-            list_ib_w_xz(4, nlist_xz) = zbound ! k of circular boundary point
-            list_ib_w_xz(5, nlist_xz) = 1d0 ! Laplacian coefficient 
-          end if 
         else
-            ! This is a solid point
-            nlist_xz = nlist_xz + 1
-            list_ib_xz(1, nlist_xz) = i_ele 
-            list_ib_xz(2, nlist_xz) = k_ele
-            list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
-            list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
-            list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
-            list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
+          ! This is a solid point
+          nlist_xz = nlist_xz + 1
+          list_ib_xz(1, nlist_xz) = i_ele 
+          list_ib_xz(2, nlist_xz) = k_ele
+          list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
+          list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
+          list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
+          list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
 
-            list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
-            list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
-            list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
-            list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
-            list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
+          list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
+          list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
+          list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
+          list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
+          list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
         end if
       end if
-      if (test_circ(i_ele, k_ele) == 0d0) then
-            ! This is a solid point
-            nlist_xz = nlist_xz + 1
-            list_ib_xz(1, nlist_xz) = i_ele 
-            list_ib_xz(2, nlist_xz) = k_ele
-            list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
-            list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
-            list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
-            list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
 
-            list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
-            list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
-            list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
-            list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
-            list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
+      if (test_circ(i_ele, k_ele) == 0d0) then
+        ! On the circle 
+        ! This is a solid point
+        nlist_xz = nlist_xz + 1
+        list_ib_xz(1, nlist_xz) = i_ele 
+        list_ib_xz(2, nlist_xz) = k_ele
+        list_ib_xz(3, nlist_xz) = i_ele   ! i of fluid point 2
+        list_ib_xz(4, nlist_xz) = k_ele   ! k of fluid point 2
+        list_ib_xz(5, nlist_xz) = i_ele   ! i of fluid point 3
+        list_ib_xz(6, nlist_xz) = k_ele   ! k of fluid point 3
+
+        list_ib_w_xz(1, nlist_xz) = 0d0 ! weighting of fluid point 2
+        list_ib_w_xz(2, nlist_xz) = 0d0 ! weighting of fluid point 3
+        list_ib_w_xz(3, nlist_xz) = 0d0 ! i of circular boundary point
+        list_ib_w_xz(4, nlist_xz) = 0d0 ! k of circular boundary point
+        list_ib_w_xz(5, nlist_xz) = 0d0 ! Laplacian coefficient 
       end if
+
     end do
   end do
 
-! CREATE THE PATTERN. 
-!  This part can be generalise calling different functions
-!  Here we could implement a switch to use different geometries
-! if (geometry_flag = 17) then
-!   call boundary_blabla
+! CREATE FIRST STEM MEL
 !            _______
 !           |       |
 !           |__   __|
@@ -235,8 +223,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !              | |
 !              | |
 !              |_|
-
-! CREATE FIRST STEM MEL
 
   points_stem_u   = dsty*nlist_xz
   points_stem_v   = (dsty-1)*nlist_xz
@@ -259,16 +245,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_bot_v(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_bot_v(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_bot_v(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_bot_v(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_bot_v(3, ilist) =  j
 
-      list_ib_bot_v(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_bot_v(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_bot_v(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_bot_v(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_bot_v(6, ilist) =  j
 
-      list_ib_bot_v(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_bot_v(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_bot_v(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_bot_v(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_bot_v(9, ilist) =  j
 
       list_ib_w_bot_v(1, ilist) =  list_ib_w_xz(5, ilist_xz) 
@@ -281,16 +267,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_bot_v(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_bot_v(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_bot_v(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_bot_v(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_bot_v(3, ilist) =  nyv21
 
-      list_ib_bot_v(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_bot_v(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_bot_v(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_bot_v(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_bot_v(6, ilist) =  nyv21
 
-      list_ib_bot_v(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_bot_v(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_bot_v(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_bot_v(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_bot_v(9, ilist) =  nyv21
 
       list_ib_w_bot_v(1, ilist) =  1d0 
@@ -311,16 +297,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_bot_u(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_bot_u(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_bot_u(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_bot_u(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_bot_u(3, ilist) =  j
 
-      list_ib_bot_u(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_bot_u(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_bot_u(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_bot_u(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_bot_u(6, ilist) =  j
 
-      list_ib_bot_u(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_bot_u(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_bot_u(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_bot_u(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_bot_u(9, ilist) =  j
 
       list_ib_w_bot_u(1, ilist) =  list_ib_w_xz(5, ilist_xz) 
@@ -333,16 +319,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_bot_u(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_bot_u(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_bot_u(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_bot_u(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_bot_u(3, ilist) =  nyu21
 
-      list_ib_bot_u(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_bot_u(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_bot_u(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_bot_u(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_bot_u(6, ilist) =  nyu21
 
-      list_ib_bot_u(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_bot_u(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_bot_u(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_bot_u(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_bot_u(9, ilist) =  nyu21
 
       list_ib_w_bot_u(1, ilist) =  1d0 
@@ -362,16 +348,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_top_v(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_top_v(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_top_v(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_top_v(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_top_v(3, ilist) =  nyv12
 
-      list_ib_top_v(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_top_v(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_top_v(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_top_v(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_top_v(6, ilist) =  nyv12
 
-      list_ib_top_v(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_top_v(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_top_v(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_top_v(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_top_v(9, ilist) =  nyv12
 
       list_ib_w_top_v(1, ilist) =  1d0 
@@ -384,16 +370,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_top_v(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_top_v(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_top_v(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_top_v(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_top_v(3, ilist) =  j
 
-      list_ib_top_v(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_top_v(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_top_v(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_top_v(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_top_v(6, ilist) =  j
 
-      list_ib_top_v(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_top_v(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_top_v(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_top_v(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_top_v(9, ilist) =  j
 
       list_ib_w_top_v(1, ilist) =  list_ib_w_xz(5, ilist_xz) 
@@ -414,16 +400,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_top_u(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_top_u(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_top_u(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_top_u(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_top_u(3, ilist) =  nyu12
 
-      list_ib_top_u(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_top_u(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_top_u(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_top_u(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_top_u(6, ilist) =  nyu12
 
-      list_ib_top_u(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_top_u(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_top_u(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_top_u(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_top_u(9, ilist) =  nyu12
 
       list_ib_w_top_u(1, ilist) =  1d0 
@@ -436,16 +422,16 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 
       ilist = ilist + 1
 
-      list_ib_top_u(1, ilist) =  list_ib_xz(1, ilist_xz) +shift_x
-      list_ib_top_u(2, ilist) =  list_ib_xz(2, ilist_xz) +shift_z
+      list_ib_top_u(1, ilist) =  list_ib_xz(1, ilist_xz) 
+      list_ib_top_u(2, ilist) =  list_ib_xz(2, ilist_xz) 
       list_ib_top_u(3, ilist) =  j
 
-      list_ib_top_u(4, ilist) =  list_ib_xz(3, ilist_xz) +shift_x
-      list_ib_top_u(5, ilist) =  list_ib_xz(4, ilist_xz) +shift_z
+      list_ib_top_u(4, ilist) =  list_ib_xz(3, ilist_xz) 
+      list_ib_top_u(5, ilist) =  list_ib_xz(4, ilist_xz) 
       list_ib_top_u(6, ilist) =  j
 
-      list_ib_top_u(7, ilist) =  list_ib_xz(5, ilist_xz) +shift_x
-      list_ib_top_u(8, ilist) =  list_ib_xz(6, ilist_xz) +shift_z
+      list_ib_top_u(7, ilist) =  list_ib_xz(5, ilist_xz) 
+      list_ib_top_u(8, ilist) =  list_ib_xz(6, ilist_xz) 
       list_ib_top_u(9, ilist) =  j
 
       list_ib_w_top_u(1, ilist) =  list_ib_w_xz(5, ilist_xz) 
@@ -460,7 +446,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
     stop
   end if 
 
-! REPLICATE THE PATTERN- STEM
+! REPLICATE THE PATTERN STEM
 ! This section should be common for all geometries
   do ix = 1,ntilex
     do iz = 1,ntilez
@@ -548,7 +534,7 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
   write(10) Ngal,nlist_ib_bot_v,nlist_ib_bot_u,nyu11,nyu21,nyu12,nyu22,nyv11,nyv21,nyv12,nyv22
   write(10) list_ib_bot_v, list_ib_top_v, list_ib_bot_u, list_ib_top_u
   write(10) list_ib_w_bot_v, list_ib_w_top_v, list_ib_w_bot_u, list_ib_w_top_u
-  write(10) list_ib_xz, list_ib_w_xz
+  write(10) r, c_i, c_k, list_ib_xz, list_ib_w_xz
   close(10)
 print*, "Geom complete"
 
@@ -594,10 +580,6 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
     aa = -1d0
   end if
 
-!  write(*,*)
-!  write(*,*) 'i_ele', i_ele 
-!  write(*,*) 'k_ele', k_ele
-
   do segm = 1, n_segm
     z = (segm-1d0)*2d0*radius/(n_segm-1d0) + c_k - radius
     x = aa*sqrt(radius**2-(z-c_k)**2) + c_i
@@ -610,10 +592,6 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
   zbound = (min_loc(1)-1d0)*2d0*radius/(n_segm-1d0) + c_k - radius
   xbound = aa*sqrt(radius**2-(zbound-c_k)**2) + c_i
 
-!  write(*,*) 'min_dist', min_dist 
-!  write(*,*) 'min_loc(1)', min_loc(1)
-!  write(*,*) 'xbound', xbound, 'zbound', zbound
-!  write(*,*)
 
   n_z = (zbound-c_k)/sqrt((zbound-c_k)**2+(xbound-c_i)**2)
   n_x = (xbound-c_i)/sqrt((zbound-c_k)**2+(xbound-c_i)**2)
@@ -673,8 +651,7 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
       x3 = i_ele + n_x_sign
 
     else
-    write(*, *) radius, c_i, c_k
-    write(*,*) i_ele, k_ele, n_x, n_z
+
     write(*,*) 'Mel fucked up'
     stop
  
