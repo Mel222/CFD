@@ -42,7 +42,7 @@ subroutine boundary_circ_rough
   integer, allocatable:: list_ib_bot_u(:,:), list_ib_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_u(:,:), list_ib_w_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_v(:,:), list_ib_w_top_v(:,:)  
-  real(8) :: r, c_i, c_k
+  real(8) :: r, c_i, c_k, shift_stag
   integer dstx1, dstx2, dstz1, dstz2
   
   real(8), allocatable :: test_circ(:,:) 
@@ -109,9 +109,17 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
 !     0.5     c_i  
 
 ! READ IN POSITION OF CIRCLES 
-  r = 4.5d0
-  c_i = 9d0
-  c_k = 9d0
+  open(69,file='geom_circ_rough.txt',form='formatted')
+  10 FORMAT(7X,D10.1)
+  read(69,10) r
+  read(69,10) c_i
+  read(69,10) c_k
+  read(69,10) shift_stag
+  close(69)
+!  r = 4.5d0 ! Values for the hexagon 
+!  c_i = 9d0
+!  c_k = 9d0
+!  shift_stag = 0.5d0
 
 ! LIMITS OF THE SQUARE WHICH CONTAINS THE CIRCLE
   dstx1 = floor(  c_i-r-1);

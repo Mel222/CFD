@@ -59,7 +59,6 @@ module declaration
   real(8) dyub2,dyut2,dyvb2,dyvt2
   real(8) posth, posth1, hny
   real(8) post_spacing
-  real(8) shift_stag
 
   real(8) alp,bet             ! Wavelengths
   real(8) Lx,Ly,Lz            ! Size of the computational box
