@@ -691,6 +691,7 @@ end subroutine
 
 subroutine add_forcing_point(list_ib_xz,list_ib_w_xz,i_ele,k_ele,interpp,weicoef,xbound,zbound)
 
+  use declaration
   implicit none
   integer :: i_ele, k_ele
   integer :: interpp(4)
@@ -698,17 +699,17 @@ subroutine add_forcing_point(list_ib_xz,list_ib_w_xz,i_ele,k_ele,interpp,weicoef
   integer :: list_ib_xz(6)
   real(8) :: list_ib_w_xz(5)
 
-  list_ib_xz(1) = i_ele
-  list_ib_xz(2) = k_ele
-  list_ib_xz(3) = interpp(2)   ! i of fluid point 2
-  list_ib_xz(4) = interpp(1)   ! k of fluid point 2
-  list_ib_xz(5) = interpp(4)   ! i of fluid point 3
-  list_ib_xz(6) = interpp(3)   ! k of fluid point 3
+  list_ib_xz(1) = 1+mod(i_ele-1d0+dnx,1d0*dnx)
+  list_ib_xz(2) = 1+mod(k_ele-1d0+dnz,1d0*dnz)
+  list_ib_xz(3) = 1+mod(interpp(2)-1d0+dnx,1d0*dnx)   ! i of fluid point 2
+  list_ib_xz(4) = 1+mod(interpp(1)-1d0+dnz,1d0*dnz)   ! k of fluid point 2
+  list_ib_xz(5) = 1+mod(interpp(4)-1d0+dnx,1d0*dnx)   ! i of fluid point 3
+  list_ib_xz(6) = 1+mod(interpp(3)-1d0+dnz,1d0*dnz)   ! k of fluid point 3
 
   list_ib_w_xz(1) = weicoef(1) ! weighting of fluid point 2
   list_ib_w_xz(2) = weicoef(2) ! weighting of fluid point 3
-  list_ib_w_xz(3) = xbound ! i of circular boundary point
-  list_ib_w_xz(4) = zbound ! k of circular boundary point
+  list_ib_w_xz(3) = 1+mod(xbound-1d0+dnx,1d0*dnx) ! i of circular boundary point
+  list_ib_w_xz(4) = 1+mod(zbound-1d0+dnz,1d0*dnz) ! k of circular boundary point
   list_ib_w_xz(5) = 1d0 ! Laplacian coefficient 
 
 end subroutine
@@ -716,17 +717,18 @@ end subroutine
 
 subroutine add_solid_point(list_ib_xz,list_ib_w_xz,i_ele,k_ele)
 
+  use declaration
   implicit none
   integer :: i_ele, k_ele
   integer :: list_ib_xz(6)
   real(8) :: list_ib_w_xz(5)
 
-  list_ib_xz(1) = i_ele 
-  list_ib_xz(2) = k_ele
-  list_ib_xz(3) = i_ele   ! i of fluid point 2
-  list_ib_xz(4) = k_ele   ! k of fluid point 2
-  list_ib_xz(5) = i_ele   ! i of fluid point 3
-  list_ib_xz(6) = k_ele   ! k of fluid point 3
+  list_ib_xz(1) = 1+mod(i_ele-1d0+dnx,1d0*dnx) 
+  list_ib_xz(2) = 1+mod(k_ele-1d0+dnz,1d0*dnz)
+  list_ib_xz(3) = 1+mod(i_ele-1d0+dnx,1d0*dnx)   ! i of fluid point 2
+  list_ib_xz(4) = 1+mod(k_ele-1d0+dnz,1d0*dnz)   ! k of fluid point 2
+  list_ib_xz(5) = 1+mod(i_ele-1d0+dnx,1d0*dnx)   ! i of fluid point 3
+  list_ib_xz(6) = 1+mod(k_ele-1d0+dnz,1d0*dnz)   ! k of fluid point 3
 
   list_ib_w_xz(1) = 0d0 ! weighting of fluid point 2
   list_ib_w_xz(2) = 0d0 ! weighting of fluid point 3
