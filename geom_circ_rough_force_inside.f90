@@ -194,31 +194,10 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
             xbound = 0d0
             call lin_interp(i_ele*1d0,k_ele*1d0,interpp,weicoef,zbound,xbound,r(p),c_i(p),c_k(p))
 
-            if (weicoef(1) < -1d0 .or. weicoef(2) < -1d0) then 
-              ! Make this a solid point and force outside
-              ! This is a solid point 
-              nlist_xz = nlist_xz + 1
-              call add_solid_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz),i_ele,k_ele)
-       
-              ! Force outside 
-              i_ele_o = interpp(2)
-              k_ele_o = interpp(1)
-              interpp = 0
-              weicoef = 0d0
-              zbound = 0d0
-              xbound = 0d0
-              call lin_interp(i_ele_o*1d0,k_ele_o*1d0,interpp,weicoef,zbound,xbound,r(p),c_i(p),c_k(p))
-              nlist_xz = nlist_xz + 1
-              call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
-&             i_ele_o,k_ele_o,interpp,weicoef,xbound,zbound)
-
-            else 
-              ! Force inside 
-              nlist_xz = nlist_xz + 1
-              call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
-&             i_ele,k_ele,interpp,weicoef,xbound,zbound)
-
-            end if 
+            ! Force inside 
+            nlist_xz = nlist_xz + 1
+            call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
+&           i_ele,k_ele,interpp,weicoef,xbound,zbound)
 
           else
             ! This is a solid point
