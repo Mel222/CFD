@@ -34,7 +34,7 @@ CALCDIR = $(INIT)
 OBJECTS = $(OBJ)/declaration.o\
           $(OBJ)/start.o\
           $(OBJ)/y_grid_canopy.o\
-          $(OBJ)/geom_circ_rough_force_inside.o\
+          $(OBJ)/geom_circ_rough_mixed_forcing.o\
           $(OBJ)/stats.o\
           $(OBJ)/spectra.o\
           $(OBJ)/tridLU_3D_IB.o\
@@ -67,9 +67,9 @@ $(OBJDIR)/y_grid_canopy.o : $(SRCDIR)/y_grid_canopy.f90 $(SRCDIR)/makefile
 	@echo compiling y_grid_canopy.f90
 	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/y_grid_canopy.f90
 
-$(OBJDIR)/geom_circ_rough_force_inside.o : $(SRCDIR)/geom_circ_rough_force_inside.f90 $(SRCDIR)/makefile
-	@echo compiling geom_circ_rough_force_inside.f90
-	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/geom_circ_rough_force_inside.f90
+$(OBJDIR)/geom_circ_rough_mixed_forcing.o : $(SRCDIR)/geom_circ_rough_mixed_forcing.f90 $(SRCDIR)/makefile
+	@echo compiling geom_circ_rough_mixed_forcing.f90
+	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/geom_circ_rough_mixed_forcing.f90
 
 $(OBJDIR)/stats.o : $(SRCDIR)/stats.f90 $(SRCDIR)/makefile
 	@echo compiling stats.f90
