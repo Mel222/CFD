@@ -619,7 +619,7 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
     z3 = k_ele + n_z_sign
     x3 = i_ele
 
-    weicoef(1) = -1d0 
+    weicoef(1) = (k_ele-zbound)/(z2-zbound) 
     weicoef(2) =  0d0
 
   elseif (k_ele .eq. c_k) then
@@ -631,7 +631,7 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
     z3 = k_ele 
     x3 = i_ele + n_x_sign
 
-    weicoef(1) = -1d0
+    weicoef(1) = (i_ele-xbound)/(x2-xbound)
     weicoef(2) =  0d0
 
   else  
