@@ -562,19 +562,13 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
   use declaration
   implicit none
 
-  real(8) :: i_ele, k_ele, x, z
+  real(8) :: i_ele, k_ele, aa
   integer :: z2, x2, z3, x3, interpp(4)
-  integer :: n_z_sign, n_x_sign, aa 
-  integer :: n_segm, segm, min_loc(1)
-  real(8) :: radius, min_dist, c_i, c_k
+  integer :: n_z_sign, n_x_sign 
+  real(8) :: radius, c_i, c_k
   real(8) :: zbound, xbound, n_z, n_x
   real(8) :: weicoef(2), denominator 
 
-  real(8), allocatable :: dist(:)
-
-  n_segm = 20000
-
-  allocate(dist(n_segm))
 
   if (i_ele .ge. c_i) then
     aa = 1d0
@@ -582,16 +576,7 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
     aa = -1d0
   end if
 
-  do segm = 1, n_segm
-    z = (segm-1d0)*2d0*radius/(n_segm-1d0) + c_k - radius
-    x = aa*sqrt(radius**2-(z-c_k)**2) + c_i
-    dist(segm) = sqrt((x-i_ele)**2 + (z-k_ele)**2) 
-  end do
-
-  min_dist = minval(dist)
-  min_loc = minloc(dist)
-
-  zbound = (min_loc(1)-1d0)*2d0*radius/(n_segm-1d0) + c_k - radius
+  zbound = c_k + (k_ele-c_k)*radius/((k_ele-c_k)**2 + (i_ele-c_i)**2)**0.5d0
   xbound = aa*sqrt(radius**2-(zbound-c_k)**2) + c_i
 
 
@@ -673,7 +658,6 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
   interpp(3) = z3 
   interpp(4) = x3 
 
-  deallocate(dist)
 
 end subroutine
 
