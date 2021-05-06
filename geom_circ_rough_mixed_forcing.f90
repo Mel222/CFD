@@ -586,6 +586,8 @@ subroutine lin_interp(i_ele, k_ele, interpp, weicoef, zbound, xbound, radius, c_
 
   if (i_ele .eq. c_i) then 
   ! Back and front of circle  
+    xbound     = c_i
+    n_z = (zbound-c_k)/sqrt((zbound-c_k)**2+(xbound-c_i)**2)
     n_z_sign = n_z / abs(n_z)
 
     z2 = k_ele + n_z_sign
