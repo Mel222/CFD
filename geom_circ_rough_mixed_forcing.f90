@@ -37,11 +37,12 @@ subroutine boundary_circ_rough
   implicit none
   integer k_ele, i_ele, j,ilist,ilist_xz,ix,iz,shift
   integer nlist_xz, nlist_ib_bot_v, nlist_ib_bot_u  
-  integer points_stem_v, points_stem_u  
+  integer points_stem_v, points_stem_u, ind 
   integer, allocatable:: list_ib_bot_v(:,:), list_ib_top_v(:,:)  
   integer, allocatable:: list_ib_bot_u(:,:), list_ib_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_u(:,:), list_ib_w_top_u(:,:)  
   real(8), allocatable:: list_ib_w_bot_v(:,:), list_ib_w_top_v(:,:)  
+  integer, allocatable:: sortInd(:)  
   real(8) :: r, c_i, c_k, shift_stag
   integer dstx1, dstx2, dstz1, dstz2
   
@@ -531,6 +532,36 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
     end do
   end do
 
+! Sort the lists 
+  allocate(sortInd(nlist_ib_bot_v))
+  call MergeSort3D(nlist_ib_bot_v, list_ib_bot_v(1:3,:), sortInd, (/.true.,.true.,.true./))
+  do ind = 1,3
+    list_ib_w_bot_v(ind,:) = list_ib_w_bot_v(ind,sortInd)
+    list_ib_bot_v(ind+3,:) = list_ib_bot_v(ind+3,sortInd)
+    list_ib_bot_v(ind+6,:) = list_ib_bot_v(ind+6,sortInd)
+  end do 
+  call MergeSort3D(nlist_ib_bot_v, list_ib_top_v(1:3,:), sortInd, (/.true.,.true.,.true./))
+  do ind = 1,3
+    list_ib_w_top_v(ind,:) = list_ib_w_top_v(ind,sortInd)
+    list_ib_top_v(ind+3,:) = list_ib_top_v(ind+3,sortInd)
+    list_ib_top_v(ind+6,:) = list_ib_top_v(ind+6,sortInd)
+  end do 
+  deallocate(sortInd)
+  allocate(sortInd(nlist_ib_bot_u))
+  call MergeSort3D(nlist_ib_bot_u, list_ib_bot_u(1:3,:), sortInd, (/.true.,.true.,.true./))
+  do ind = 1,3
+    list_ib_w_bot_u(ind,:) = list_ib_w_bot_u(ind,sortInd)
+    list_ib_bot_u(ind+3,:) = list_ib_bot_u(ind+3,sortInd)
+    list_ib_bot_u(ind+6,:) = list_ib_bot_u(ind+6,sortInd)
+  end do 
+  call MergeSort3D(nlist_ib_bot_u, list_ib_top_u(1:3,:), sortInd, (/.true.,.true.,.true./))
+  do ind = 1,3
+    list_ib_w_top_u(ind,:) = list_ib_w_top_u(ind,sortInd)
+    list_ib_top_u(ind+3,:) = list_ib_top_u(ind+3,sortInd)
+    list_ib_top_u(ind+6,:) = list_ib_top_u(ind+6,sortInd)
+  end do 
+  deallocate(sortInd)
+  
 ! Save the lists into a file
   open(10,file=trim(dirout)//'boundary_'//ext1//'x'//ext2//'x'//ext3//'.dat',form='unformatted',access='stream')
   write(10) Lx,Ly,Lz
