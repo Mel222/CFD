@@ -34,7 +34,7 @@ CALCDIR = $(INIT)
 OBJECTS = $(OBJ)/declaration.o\
           $(OBJ)/start.o\
           $(OBJ)/y_grid_canopy.o\
-          $(OBJ)/geom_circ_rough_mixed_forcing.o\
+          $(OBJ)/geom_circ_rough_mixed_forcing_24pt.o\
           $(OBJ)/mergeSort.o\
           $(OBJ)/stats.o\
           $(OBJ)/spectra.o\
@@ -68,9 +68,9 @@ $(OBJDIR)/y_grid_canopy.o : $(SRCDIR)/y_grid_canopy.f90 $(SRCDIR)/makefile
 	@echo compiling y_grid_canopy.f90
 	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/y_grid_canopy.f90
 
-$(OBJDIR)/geom_circ_rough_mixed_forcing.o : $(SRCDIR)/geom_circ_rough_mixed_forcing.f90 $(SRCDIR)/makefile
-	@echo compiling geom_circ_rough_mixed_forcing.f90
-	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/geom_circ_rough_mixed_forcing.f90
+$(OBJDIR)/geom_circ_rough_mixed_forcing_24pt.o : $(SRCDIR)/geom_circ_rough_mixed_forcing_24pt.f90 $(SRCDIR)/makefile
+	@echo compiling geom_circ_rough_mixed_forcing_24pt.f90
+	@cd $(OBJDIR); $(PREP) $(F90) $(F90FLAGS) -I$(SRCDIR) $(SRCDIR)/geom_circ_rough_mixed_forcing_24pt.f90
 
 $(OBJDIR)/mergeSort.o : $(SRCDIR)/mergeSort.f90 $(SRCDIR)/makefile
 	@echo compiling mergeSort.f90
