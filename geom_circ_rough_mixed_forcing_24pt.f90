@@ -216,6 +216,49 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
     end do
   end do
 
+  ! Add some additional force outside points
+  i_ele = 8
+  k_ele = 16
+  interpp = 0
+  weicoef = 0d0
+  zbound = 0d0
+  xbound = 0d0
+  call lin_interp(i_ele*1d0,k_ele*1d0,interpp,weicoef,zbound,xbound,r,c_i,c_k)
+  nlist_xz = nlist_xz + 1
+  call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
+&           i_ele,k_ele,interpp,weicoef,xbound,zbound)
+  i_ele = 16
+  k_ele = 16
+  interpp = 0
+  weicoef = 0d0
+  zbound = 0d0
+  xbound = 0d0
+  call lin_interp(i_ele*1d0,k_ele*1d0,interpp,weicoef,zbound,xbound,r,c_i,c_k)
+  nlist_xz = nlist_xz + 1
+  call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
+&           i_ele,k_ele,interpp,weicoef,xbound,zbound)
+  i_ele = 16
+  k_ele = 8
+  interpp = 0
+  weicoef = 0d0
+  zbound = 0d0
+  xbound = 0d0
+  call lin_interp(i_ele*1d0,k_ele*1d0,interpp,weicoef,zbound,xbound,r,c_i,c_k)
+  nlist_xz = nlist_xz + 1
+  call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
+&           i_ele,k_ele,interpp,weicoef,xbound,zbound)
+  i_ele = 8
+  k_ele = 8
+  interpp = 0
+  weicoef = 0d0
+  zbound = 0d0
+  xbound = 0d0
+  call lin_interp(i_ele*1d0,k_ele*1d0,interpp,weicoef,zbound,xbound,r,c_i,c_k)
+  nlist_xz = nlist_xz + 1
+  call add_forcing_point(list_ib_xz(1,nlist_xz),list_ib_w_xz(1,nlist_xz), &
+&           i_ele,k_ele,interpp,weicoef,xbound,zbound)
+  
+  
   deallocate(test_circ)
 
 
