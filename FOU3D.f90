@@ -1549,8 +1549,8 @@ subroutine ops_in_planes(myid,flagst)
   du3dx = 0d0
   du3dz = 0d0
 
-  do j = limPL_excw(ugrid,1,myid),limPL_excw(ugrid,2,myid)
-!  do j = limPL_incw(ugrid,1,myid),limPL_incw(ugrid,2,myid) ! Mel 30/11/2020
+!  do j = limPL_excw(ugrid,1,myid),limPL_excw(ugrid,2,myid)
+  do j = limPL_incw(ugrid,1,myid),limPL_incw(ugrid,2,myid) ! Mel 30/11/2020
 
     call four_to_phys_u(u1PL(1,1,j),u2PL_itp(1,1,j),u3PL(1,1,j),bandPL(myid))
 
@@ -1582,19 +1582,8 @@ subroutine ops_in_planes(myid,flagst)
 
   end do
   
-! Includes wall for output (stats) - needed as walls now not in N?
-  if(myid==0)then
-    j = limPL_incw(ugrid,1,myid)
-    call four_to_phys_u(u1PL(1,1,j),u2PL_itp(1,1,j),u3PL(1,1,j),bandPL(myid))
-  elseif(myid==np-1)then
-    j = limPL_incw(ugrid,2,myid)
-    call four_to_phys_u(u1PL(1,1,j),u2PL_itp(1,1,j),u3PL(1,1,j),bandPL(myid))
-  endif
-    
-    
-    
-  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
-!  do j = limPL_incw(vgrid,1,myid),limPL_incw(vgrid,2,myid) !Mel 30/11/2020
+!  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
+  do j = limPL_incw(vgrid,1,myid),limPL_incw(vgrid,2,myid) !Mel 30/11/2020
     
     call four_to_phys_u(u1PL_itp(1,1,j),u2PL(1,1,j),u3PL_itp(1,1,j),bandPL(myid))
     
@@ -1619,18 +1608,6 @@ subroutine ops_in_planes(myid,flagst)
     
   end do
   
-! Includes wall for output (stats) - needed as walls now not in N?
-  if(myid==0)then
-    j = limPL_incw(vgrid,1,myid)
-    call four_to_phys_u(u1PL_itp(1,1,j),u2PL(1,1,j),u3PL_itp(1,1,j),bandPL(myid))
-  elseif(myid==np-1)then
-    j = limPL_incw(vgrid,2,myid)
-    call four_to_phys_u(u1PL_itp(1,1,j),u2PL(1,1,j),u3PL_itp(1,1,j),bandPL(myid))
-  endif
-  
-  
-  
-
   deallocate(du1dx,du1dz,du2dx,du2dz,du3dx,du3dz)
 
 end subroutine
