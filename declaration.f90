@@ -177,5 +177,19 @@ module declaration
   type(rfield_dg), allocatable:: DG(:)
   
   real(8) bslip
+
+  ! Modes and planes a la Zengrong 
+  integer,    allocatable :: M2P_NBuffS(  :),  M2P_NBuffR(  :)
+  integer,    allocatable :: M2P_NumbS(:, :),  M2P_NumbR(:, :)
+  integer,    allocatable :: M2P_MaxNumbS(:),  M2P_MaxNumbR(:)
+  integer,    allocatable :: M2P_DispS(:, :),  M2P_DispR(:, :)
+!  complex(8), allocatable :: M2P_BuffSend(:),  M2P_BuffRecv(:)    ! Used by 'MPI_ALLTOALLV'
+
+  integer,    allocatable :: P2M_NBuffS(  :),  P2M_NBuffR(  :)
+  integer,    allocatable :: P2M_NumbS(:, :),  P2M_NumbR(:, :)
+  integer,    allocatable :: P2M_MaxNumbS(:),  P2M_MaxNumbR(:)
+  integer,    allocatable :: P2M_DispS(:, :),  P2M_DispR(:, :)
+!  complex(8), allocatable :: P2M_BuffSend(:),  P2M_BuffRecv(:)    ! Used by 'MPI_ALLTOALLV'
+
   
 end module
