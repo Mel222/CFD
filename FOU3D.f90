@@ -810,98 +810,114 @@ subroutine modes_to_planes_UVP (xPL,x,grid,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! MODES TO PLANES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use declaration
-  implicit none
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,dki,plband,grid
-  integer column
-  integer iband,jband
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,jgal(grid,1)-1:jgal(grid,2)+1)
-  complex(8), allocatable :: buffS(:,:),buffR(:,:)
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
+    
+    integer,      intent(in ) :: grid
+    real(8),      intent(out) :: xPL(igal,kgal,jgal(grid,1)-1:jgal(grid,2)+1)
+    type(cfield), intent(in ) :: x(sband:eband)
+    integer,      intent(in ) :: myid
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  ! Loop for itself
-  ! Transpose the cube that it already owns
-  plband = bandPL(myid)
-  yourid = myid
-  do iband = sband,eband
-    jband = iband
-    jminR = max(planelim(grid,1,  myid),jlim(1,grid,jband)+1)
-    jmaxR = min(planelim(grid,2,  myid),jlim(2,grid,jband)-1)
-    if (jminR==Ny(grid,plband-1)+1 .and. jmaxR>=jminR) then
-      jminR = jminR-1
-    end if
-    if (jmaxR==Ny(grid,plband  )   .and. jmaxR>=jminR) then
-      jmaxR = jmaxR+1
-    end if
-    do j = jminR,jmaxR
-      do column = 1,columns_num(jband,yourid)
-        i = columns_i(column,jband,yourid)
-        k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-        xPL(2*i+1,k,j) = dreal(x(jband)%f(j,column))
-        xPL(2*i+2,k,j) = dimag(x(jband)%f(j,column))
-      end do
-    end do
-  end do
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
 
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)
-    if (yourid<np) then
-      do iband = sband,eband
-        !jband=crossband(iband,yourid)
-        jband = iband
-        jminS = max(planelim(grid,1,yourid),jlim(1,grid,iband)+1)
-        jmaxS = min(planelim(grid,2,yourid),jlim(2,grid,iband)-1)
-        jminR = max(planelim(grid,1,  myid),jlim(1,grid,jband)+1)
-        jmaxR = min(planelim(grid,2,  myid),jlim(2,grid,jband)-1)
-        if (jminS==Ny(grid,0)+1  ) then
-          jminS = jminS-1
-        end if
-        if (jmaxS==Ny(grid,nband)) then
-          jmaxS = jmaxS+1
-        end if
-        if (jminR==Ny(grid,0)+1  ) then
-          jminR = jminR-1
-        end if
-        if (jmaxR==Ny(grid,nband)) then
-          jmaxR = jmaxR+1
-        end if
-        allocate(buffS(jminS:jmaxS,columns_num(iband,  myid)))
-        allocate(buffR(jminR:jmaxR,columns_num(jband,yourid)))
-        msizeS = 2*(columns_num(iband,  myid)*(jmaxS-jminS+1))  ! 2 times because it's complex
-        msizeR = 2*(columns_num(jband,yourid)*(jmaxR-jminR+1))
-        msizeS = max(msizeS,0)
-        msizeR = max(msizeR,0)
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
 
-        do j = jminS,jmaxS
-          do column = 1,columns_num(iband,myid)
-            buffS(j,column) = x(iband)%f(j,column)
 
-          end do
+    plband = bandPL(myid)
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf = max( planelim(  grid,1,myid), jlim(1,grid,iband)+1 )
+        jmaxSelf = min( planelim(  grid,2,myid), jlim(2,grid,iband)-1 )
+        jminSelf = jminSelf - max( isign( 1,       jmaxSelf - jminSelf ), 0 ) * &
+                            & max( isign( 1, -abs( jminSelf - (Ny(grid,plband-1)+1) ) ), 0 )
+        jmaxSelf = jmaxSelf + max( isign( 1,       jmaxSelf - jminSelf ), 0 ) * &
+                            & max( isign( 1, -abs( jmaxSelf -  Ny(grid,plband  ) ) ), 0 )
+        jminR(iband) = max( planelim(  grid,1,  myid), jlim(1,grid,iband)+1 )
+        jmaxR(iband) = min( planelim(  grid,2,  myid), jlim(2,grid,iband)-1 )
+        jminR(iband) = jminR(iband) - max( isign( 1, -abs(jminR(iband)-(Ny(grid,0)+1)) ), 0 )
+        jmaxR(iband) = jmaxR(iband) + max( isign( 1, -abs(jmaxR(iband)-Ny(grid,nband)) ), 0 )
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,yourid)
+                i = columns_i(column,iband,yourid)
+                k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                xPL(2*i+1,k,j) = dreal( x(iband)%f(j,column) )
+                xPL(2*i+2,k,j) = dimag( x(iband)%f(j,column) )
+            end do
         end do
+    End Do
 
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j = jminR,jmaxR
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            xPL(2*i+1,k,j) = dreal(buffR(j,column))
-            xPL(2*i+2,k,j) = dimag(buffR(j,column))
-          end do
-        end do
 
-        deallocate(buffR,buffS)
+    allocate( buffS( M2P_MaxNumbS(grid) ) )
+    allocate( buffR( M2P_MaxNumbR(grid) ) )
 
-      end do
-    end if
-  end do
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )   ! XOR. It's used to pair procs 1-to-1
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminS( iband) = max( planelim(  grid,1,yourid), jlim(1,grid,iband)+1 )
+                jmaxS( iband) = min( planelim(  grid,2,yourid), jlim(2,grid,iband)-1 )
+                jminS( iband) = jminS(iband) - max( isign( 1, -abs(jminS(iband)-(Ny(grid,0)+1)) ), 0 )
+                jmaxS( iband) = jmaxS(iband) + max( isign( 1, -abs(jmaxS(iband)-Ny(grid,nband)) ), 0 )
+                msizeR(iband) = columns_num(iband,yourid) * (jmaxR(iband)-jminR(iband)+1)    ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffS = iBuffS + 1
+                        buffS(iBuffS) = x(iband)%f(j,column)
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+            
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffR = iBuffR + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        xPL(2*i+1,k,j) = dreal( buffR(iBuffR) )
+                        xPL(2*i+2,k,j) = dimag( buffR(iBuffR) )
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 
@@ -1294,78 +1310,105 @@ subroutine modes_to_planes_dU(xPL,x,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! MODES TO PLANES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use declaration
-  implicit none
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid,grid
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,dki,plband
-  integer column
-  integer iband,jband
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,nyuIB1(myid):nyuIB2(myid))
-  complex(8), allocatable :: buffS(:,:),buffR(:,:)
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
 
-  plband = bandPL(myid)
+    integer,      intent(in ) :: myid
+    real(8),      intent(out) :: xPL(igal,kgal,nyuIB1(myid):nyuIB2(myid))
+    type(cfield), intent(in ) :: x(sband:eband)
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  yourid = myid
-  do iband = sband,eband
-    !jband=crossband(iband,yourid)
-    jband = iband
-    jminR = max(nyuIB1(myid),jlim(1,ugrid,jband)+1)
-    jmaxR = min(nyuIB2(myid),jlim(2,ugrid,jband)-1)
-    do j = jminR,jmaxR
-      do column = 1,columns_num(jband,yourid)
-        i = columns_i(column,jband,yourid)
-        k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-        xPL(2*i+1,k,j) = dreal(x(jband)%f(j,column))
-        xPL(2*i+2,k,j) = dimag(x(jband)%f(j,column))
-      end do
-    end do
-  end do
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
 
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)
-    if (yourid<np) then
-      do iband = sband,eband
-        !jband=crossband(iband,yourid)
-        jband = iband
-        jminS = max(nyuIB1(yourid),jlim(1,ugrid,iband)+1)
-        jmaxS = min(nyuIB2(yourid),jlim(2,ugrid,iband)-1)
-        jminR = max(nyuIB1(myid  ),jlim(1,ugrid,jband)+1)
-        jmaxR = min(nyuIB2(myid  ),jlim(2,ugrid,jband)-1)
-        allocate(buffS(jminS:jmaxS,columns_num(iband,  myid)))
-        allocate(buffR(jminR:jmaxR,columns_num(jband,yourid)))
-        msizeS = 2*(columns_num(iband,  myid)*(jmaxS-jminS+1))  ! 2 times because it's complex
-        msizeR = 2*(columns_num(jband,yourid)*(jmaxR-jminR+1))
-        msizeS = max(msizeS,0)
-        msizeR = max(msizeR,0)
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
 
-        do j = jminS,jmaxS
-          do column = 1,columns_num(iband,myid)
-            buffS(j,column) = x(iband)%f(j,column)
-          end do
+
+    plband = bandPL(myid)
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf     = max( nyuIB1(myid), jlim(1,ugrid,iband)+1 )
+        jmaxSelf     = min( nyuIB2(myid), jlim(2,ugrid,iband)-1 )
+        jminR(iband) = max( nyuIB1(myid), jlim(1,ugrid,iband)+1 )
+        jmaxR(iband) = min( nyuIB2(myid), jlim(2,ugrid,iband)-1 )
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,yourid)
+                i = columns_i(column,iband,yourid)
+                k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                xPL(2*i+1,k,j) = dreal( x(iband)%f(j,column) )
+                xPL(2*i+2,k,j) = dimag( x(iband)%f(j,column) )
+            end do
         end do
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j = jminR,jmaxR
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            xPL(2*i+1,k,j) = dreal(buffR(j,column))
-            xPL(2*i+2,k,j) = dimag(buffR(j,column))
-          end do
-        end do
+    End Do
 
-        deallocate(buffR,buffS)
 
-      end do
-    end if
-  end do
+    allocate( buffS( M2P_MaxNumbS(ugrid) ) )
+    allocate( buffR( M2P_MaxNumbR(ugrid) ) )
+
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminS( iband) = max( nyuIB1(yourid), jlim(1,ugrid,iband)+1 )
+                jmaxS( iband) = min( nyuIB2(yourid), jlim(2,ugrid,iband)-1 )
+                msizeR(iband) = columns_num(iband,yourid) * (jmaxR(iband)-jminR(iband)+1)    ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffS = iBuffS + 1
+                        buffS(iBuffS) = x(iband)%f(j,column)
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffR = iBuffR + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        xPL(2*i+1,k,j) = dreal( buffR(iBuffR) )
+                        xPL(2*i+2,k,j) = dimag( buffR(iBuffR) )
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 
@@ -1374,78 +1417,105 @@ subroutine modes_to_planes_dV(xPL,x,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! MODES TO PLANES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use declaration
-  implicit none
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid,grid
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,dki,plband
-  integer column
-  integer iband,jband
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,nyvIB1(myid):nyvIB2(myid))
-  complex(8), allocatable :: buffS(:,:),buffR(:,:)
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
 
-  plband = bandPL(myid)
+    integer,      intent(in ) :: myid
+    real(8),      intent(out) :: xPL(igal,kgal,nyvIB1(myid):nyvIB2(myid))
+    type(cfield), intent(in ) :: x(sband:eband)
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  yourid = myid
-  do iband = sband,eband
-    !jband=crossband(iband,yourid)
-    jband = iband
-    jminR = max(nyvIB1(myid),jlim(1,vgrid,jband)+1)
-    jmaxR = min(nyvIB2(myid),jlim(2,vgrid,jband)-1)
-    do j = jminR,jmaxR
-      do column = 1,columns_num(jband,yourid)
-        i = columns_i(column,jband,yourid)
-        k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-        xPL(2*i+1,k,j) = dreal(x(jband)%f(j,column))
-        xPL(2*i+2,k,j) = dimag(x(jband)%f(j,column))
-      end do
-    end do
-  end do
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
 
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)
-    if (yourid<np) then
-      do iband = sband,eband
-        !jband=crossband(iband,yourid)
-        jband = iband
-        jminS = max(nyvIB1(yourid),jlim(1,vgrid,iband)+1)
-        jmaxS = min(nyvIB2(yourid),jlim(2,vgrid,iband)-1)
-        jminR = max(nyvIB1(myid  ),jlim(1,vgrid,jband)+1)
-        jmaxR = min(nyvIB2(myid  ),jlim(2,vgrid,jband)-1)
-        allocate(buffS(jminS:jmaxS,columns_num(iband,  myid)))
-        allocate(buffR(jminR:jmaxR,columns_num(jband,yourid)))
-        msizeS = 2*(columns_num(iband,  myid)*(jmaxS-jminS+1))  ! 2 times because it's complex
-        msizeR = 2*(columns_num(jband,yourid)*(jmaxR-jminR+1))
-        msizeS = max(msizeS,0)
-        msizeR = max(msizeR,0)
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
 
-        do j = jminS,jmaxS
-          do column = 1,columns_num(iband,myid)
-            buffS(j,column) = x(iband)%f(j,column)
-          end do
+
+    plband = bandPL(myid)
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf     = max( nyvIB1(myid), jlim(1,vgrid,iband)+1 )
+        jmaxSelf     = min( nyvIB2(myid), jlim(2,vgrid,iband)-1 )
+        jminR(iband) = max( nyvIB1(myid), jlim(1,vgrid,iband)+1 )
+        jmaxR(iband) = min( nyvIB2(myid), jlim(2,vgrid,iband)-1 )
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,yourid)
+                i = columns_i(column,iband,yourid)
+                k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                xPL(2*i+1,k,j) = dreal( x(iband)%f(j,column) )
+                xPL(2*i+2,k,j) = dimag( x(iband)%f(j,column) )
+            end do
         end do
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j = jminR,jmaxR
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            xPL(2*i+1,k,j) = dreal(buffR(j,column))
-            xPL(2*i+2,k,j) = dimag(buffR(j,column))
-          end do
-        end do
+    End Do
 
-        deallocate(buffR,buffS)
 
-      end do
-    end if
-  end do
+    allocate( buffS( M2P_MaxNumbS(vgrid) ) )
+    allocate( buffR( M2P_MaxNumbR(vgrid) ) )
+
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminS( iband) = max( nyvIB1(yourid), jlim(1,vgrid,iband)+1 )
+                jmaxS( iband) = min( nyvIB2(yourid), jlim(2,vgrid,iband)-1 )
+                msizeR(iband) = columns_num(iband,yourid) * (jmaxR(iband)-jminR(iband)+1)    ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffS = iBuffS + 1
+                        buffS(iBuffS) = x(iband)%f(j,column)
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffR = iBuffR + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        xPL(2*i+1,k,j) = dreal( buffR(iBuffR) )
+                        xPL(2*i+2,k,j) = dimag( buffR(iBuffR) )
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 
@@ -1660,96 +1730,112 @@ subroutine planes_to_modes_UVP (x,xPL,grid,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! PLANES TO MODES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! Prepare the vectors for the Fourier transform
-! The procs broadcast the data they have of a plane, and receive the data of a pencil,
-!  they also transpose the data for the Fourier transform XZY -> YXZ
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
-  use declaration
-  implicit none
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,plband,grid
-  integer column
-  integer iband,jband
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,jgal(grid,1)-1:jgal(grid,2)+1)
-  complex(8), allocatable:: buffS(:,:),buffR(:,:)
+    integer,      intent(in ) :: grid
+    type(cfield), intent(out) :: x(sband:eband)
+    real(8),      intent(in ) :: xPL(igal,kgal,jgal(grid,1)-1:jgal(grid,2)+1)
+    integer,      intent(in ) :: myid
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  ! Loop for itself
-  ! Transpose the cube that it already owns
-  plband = bandPL(myid) ! Return the band (phys) the proc works at
-  do iband = sband,eband
-    jminR = max(limPL_excw(grid,1,myid),jlim(1,grid,iband)+1)  ! Select the planes to transpose 
-    jmaxR = min(limPL_excw(grid,2,myid),jlim(2,grid,iband)-1)
-    if (jminR==Ny(grid,plband-1)+1 .and. jmaxR>=jminR) then   ! Special cases: interfaces
-      jminR = jminR-1
-    end if
-    if (jmaxR==Ny(grid,plband  )   .and. jmaxR>=jminR) then
-      jmaxR = jmaxR+1
-    end if
-    do j = jminR,jmaxR
-      do column = 1,columns_num(iband,myid)
-        i = columns_i(column,iband,myid)
-        k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
-        x(iband)%f(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j)) ! Transposition: Reordering from XZY to YC
-      end do
-    end do
-  end do
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
 
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)   ! XOR. It's used to pair procs 1-to-1
-    if (yourid<np) then
-      do iband = sband,eband
-        !jband = crossband(iband,yourid)
-        jband = iband
-        jminS = max(limPL_excw(grid,1,  myid),jlim(1,grid,jband)+1)  ! Select the planes to be SENT.
-        jmaxS = min(limPL_excw(grid,2,  myid),jlim(2,grid,jband)-1)  ! max and min because maybe this proc needs less planes that the other proc has
-        jminR = max(limPL_excw(grid,1,yourid),jlim(1,grid,iband)+1)  ! Select the planes to be RECEIVED
-        jmaxR = min(limPL_excw(grid,2,yourid),jlim(2,grid,iband)-1)
-        ! Adding the walls (but not the interfaces)
-        if (jminS==Ny(grid,0)+1  ) then
-          jminS=jminS-1
-        end if
-        if (jmaxS==Ny(grid,nband)) then
-          jmaxS=jmaxS+1
-        end if
-        if (jminR==Ny(grid,0)+1  ) then
-          jminR=jminR-1
-        end if
-        if (jmaxR==Ny(grid,nband)) then
-          jmaxR=jmaxR+1
-        end if
-        allocate(buffS(jminS:jmaxS,columns_num(jband,yourid)))
-        allocate(buffR(jminR:jmaxR,columns_num(iband,  myid)))
-        msizeS = 2*(columns_num(jband,yourid)*(jmaxS-jminS+1))     ! Size of the data to be SENDER (times 2, because it is complex)
-        msizeR = 2*(columns_num(iband,  myid)*(jmaxR-jminR+1))     ! Size of the data to be RECEIVED
-        msizeS = max(msizeS,0)                                     ! The size has to be 0 or positive. 
-        msizeR = max(msizeR,0)
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do j=jminS,jmaxS
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            buffS(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j))     ! The data is transposed and stored in a buffer
-          end do
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
+
+
+    plband = bandPL(myid)    ! Return the band (phys) the proc works at
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf = max( limPL_excw(grid,1,myid), jlim(1,grid,iband)+1 )  ! Select the planes to transpose 
+        jmaxSelf = min( limPL_excw(grid,2,myid), jlim(2,grid,iband)-1 )
+        jminSelf = jminSelf - max( isign( 1,       jmaxSelf - jminSelf ), 0 ) * &
+                            & max( isign( 1, -abs( jminSelf - (Ny(grid,plband-1)+1) ) ), 0 )
+        jmaxSelf = jmaxSelf + max( isign( 1,       jmaxSelf - jminSelf ), 0 ) * &
+                            & max( isign( 1, -abs( jmaxSelf -  Ny(grid,plband  ) ) ), 0 )
+        jminS(iband) = max( limPL_excw(grid,1,  myid), jlim(1,grid,iband)+1 )
+        jmaxS(iband) = min( limPL_excw(grid,2,  myid), jlim(2,grid,iband)-1 )
+        jminS(iband) = jminS(iband) - max( isign( 1, -abs(jminS(iband)-(Ny(grid,0)+1)) ), 0 )
+        jmaxS(iband) = jmaxS(iband) + max( isign( 1, -abs(jmaxS(iband)-Ny(grid,nband)) ), 0 )
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,myid)
+                i = columns_i(column,iband,myid)
+                k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
+                x(iband)%f(j,column) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) ) ! Transposition: Reordering from XZY to YC
+            end do
         end do
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &   ! SEND_RECV so it can send and receive at the same time
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j=jminR,jmaxR
-          do column = 1,columns_num(iband,myid)
-            x(iband)%f(j,column) = buffR(j,column)                         ! Store the data received
-          end do
-        end do
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        deallocate(buffR,buffS)
-      end do
-    end if
-  end do
+    End Do
+
+
+    allocate( buffS( P2M_MaxNumbS(grid) ) )
+    allocate( buffR( P2M_MaxNumbR(grid) ) )
+
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )    ! XOR. It's used to pair procs 1-to-1
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminR( iband) = max( limPL_excw(grid,1,yourid), jlim(1,grid,iband)+1 )
+                jmaxR( iband) = min( limPL_excw(grid,2,yourid), jlim(2,grid,iband)-1 )
+                jminR( iband) = jminR(iband) - max( isign( 1, -abs(jminR(iband)-(Ny(grid,0)+1)) ), 0 )
+                jmaxR( iband) = jmaxR(iband) + max( isign( 1, -abs(jmaxR(iband)-Ny(grid,nband)) ), 0 )
+                msizeR(iband) = columns_num(iband,  myid) * (jmaxR(iband)-jminR(iband)+1)    ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffS = iBuffS + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        buffS(iBuffS) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) )
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffR = iBuffR + 1
+                        x(iband)%f(j,column) = buffR(iBuffR)
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 
@@ -1920,80 +2006,104 @@ subroutine planes_to_modes_dU (x,xPL,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! PLANES TO MODES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! Prepare the vectors for the Fourier transform
-! The procs broadcast the data they have of a plane, and receive the data of a pencil,
-!  they also transpose the data for the Fourier transform XZY -> YXZ
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
 
-  use declaration
-  implicit none
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid
+    integer,      intent(in ) :: myid
+    type(cfield), intent(out) :: x(sband:eband)
+    real(8),      intent(in ) :: xPL(igal,kgal,nyuIB1(myid):nyuIB2(myid))
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,plband,grid
-  integer iband,jband
-  integer column
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,nyuIB1(myid):nyuIB2(myid))
-  complex(8), allocatable:: buffS(:,:),buffR(:,:)
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
+    
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
 
-! DELETE  plband=bandPL(myid)  
-
-  ! Loop for itself
-  ! Transpose the cube that it already owns
-  plband = bandPL(myid) ! Return the band (phys) the proc works at
-  do iband = sband,eband
-    jminR = max(nyuIB1(myid),jlim(1,ugrid,iband)+1)  ! Select the planes to transpose 
-    jmaxR = min(nyuIB2(myid),jlim(2,ugrid,iband)-1)
-    do j = jminR,jmaxR
-      do column = 1,columns_num(iband,myid)
-        i = columns_i(column,iband,myid)
-        k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
-        x(iband)%f(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j)) ! Transposition: Reordering from XZY to YC
-      end do
-    end do
-  end do
-
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)   ! XOR. It's used to pair procs 1-to-1
-    if (yourid<np) then
-      do iband = sband,eband
-        jband = iband
-        jminS = max(nyuIB1(  myid),jlim(1,ugrid,jband)+1)  ! Select the planes to be SENT.
-        jmaxS = min(nyuIB2(  myid),jlim(2,ugrid,jband)-1) 
-        jminR = max(nyuIB1(yourid),jlim(1,ugrid,iband)+1)  ! Select the planes to be RECEIVED
-        jmaxR = min(nyuIB2(yourid),jlim(2,ugrid,iband)-1)
-        ! Special cases: interfaces
-        allocate(buffS(jminS:jmaxS,columns_num(jband,yourid)))
-        allocate(buffR(jminR:jmaxR,columns_num(iband,  myid)))
-        msizeS = 2*(columns_num(jband,yourid)*(jmaxS-jminS+1))     ! Size of the data to be SENDER (times 2, because it is complex)
-        msizeR = 2*(columns_num(iband,  myid)*(jmaxR-jminR+1))     ! Size of the data to be RECEIVED
-        msizeS = max(msizeS,0)                                     ! The size has to be 0 or positive. 
-        msizeR = max(msizeR,0)
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do j=jminS,jmaxS
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            buffS(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j))     ! The data is transposed and stored in a buffer
-          end do
+    
+    plband = bandPL(myid)
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf     = max( nyuIB1(myid), jlim(1,ugrid,iband)+1 )  ! Select the planes to transpose 
+        jmaxSelf     = min( nyuIB2(myid), jlim(2,ugrid,iband)-1 )
+        jminS(iband) = max( nyuIB1(myid), jlim(1,ugrid,iband)+1 )  ! Select the planes to be SENT.
+        jmaxS(iband) = min( nyuIB2(myid), jlim(2,ugrid,iband)-1 ) 
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,myid)
+                i = columns_i(column,iband,myid)
+                k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
+                x(iband)%f(j,column) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) )
+! Transposition: Reordering from XZY to YC
+            end do
         end do
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &   ! SEND_RECV so it can send and receive at the same time
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j=jminR,jmaxR
-          do column = 1,columns_num(iband,myid)
-            x(iband)%f(j,column) = buffR(j,column)                         ! Store the data received
-          end do
-        end do
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        deallocate(buffR,buffS)
-      end do
-    end if
-  end do
+    End Do
+
+
+    allocate( buffS( P2M_MaxNumbS(ugrid) ) )
+    allocate( buffR( P2M_MaxNumbR(ugrid) ) )
+
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )   ! XOR. It's used to pair procs 1-to-1
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminR( iband) = max( nyuIB1(yourid), jlim(1,ugrid,iband)+1 )  ! Select the planes to be RECEIVED
+                jmaxR( iband) = min( nyuIB2(yourid), jlim(2,ugrid,iband)-1 )
+                msizeR(iband) = columns_num(iband,  myid) * (jmaxR(iband)-jminR(iband)+1)        ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffS = iBuffS + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        buffS(iBuffS) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) ) ! The data is transposed and stored in a buffer
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &   ! SEND_RECV so it can send and receive at the same time
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffR = iBuffR + 1
+                        x(iband)%f(j,column) = buffR(iBuffR) ! Store the data received
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 
@@ -2002,82 +2112,103 @@ subroutine planes_to_modes_dV (x,xPL,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! PLANES TO MODES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! Prepare the vectors for the Fourier transform
-! The procs broadcast the data they have of a plane, and receive the data of a pencil,
-!  they also transpose the data for the Fourier transform XZY -> YXZ
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
 
-  use declaration
-  implicit none
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid
+    integer,      intent(in ) :: myid
+    type(cfield), intent(out) :: x(sband:eband)
+    real(8),      intent(in ) :: xPL(igal,kgal,nyvIB1(myid):nyvIB2(myid))
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,plband,grid
-  integer iband,jband
-  integer column
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,nyvIB1(myid):nyvIB2(myid))
-  complex(8), allocatable:: buffS(:,:),buffR(:,:)
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
+    
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
 
-! DELETE  plband=bandPL(myid)  
-
-  ! Loop for itself
-  ! Transpose the cube that it already owns
-  plband = bandPL(myid) ! Return the band (phys) the proc works at
-  do iband = sband,eband
-    jminR = max(nyvIB1(myid),jlim(1,vgrid,iband)+1)  ! Select the planes to transpose 
-    jmaxR = min(nyvIB2(myid),jlim(2,vgrid,iband)-1)
-    do j = jminR,jmaxR
-      do column = 1,columns_num(iband,myid)
-        i = columns_i(column,iband,myid)
-        k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
-        x(iband)%f(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j)) ! Transposition: Reordering from XZY to YC
-      end do
-    end do
-  end do
-
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)   ! XOR. It's used to pair procs 1-to-1
-    if (yourid<np) then
-      !do iband=bandit(1),bandit(2),bandit(3)   ! Iterate first over the short pencils and then the long ones.
-      do iband = sband,eband
-        !jband = crossband(iband,yourid)
-        jband = iband
-        jminS = max(nyvIB1(  myid),jlim(1,vgrid,jband)+1)  ! Select the planes to be SENT.
-        jmaxS = min(nyvIB2(  myid),jlim(2,vgrid,jband)-1) 
-        jminR = max(nyvIB1(yourid),jlim(1,vgrid,iband)+1)  ! Select the planes to be RECEIVED
-        jmaxR = min(nyvIB2(yourid),jlim(2,vgrid,iband)-1)
-        ! Special cases: interfaces
-        allocate(buffS(jminS:jmaxS,columns_num(jband,yourid)))
-        allocate(buffR(jminR:jmaxR,columns_num(iband,  myid)))
-        msizeS = 2*(columns_num(jband,yourid)*(jmaxS-jminS+1))     ! Size of the data to be SENDER (times 2, because it is complex)
-        msizeR = 2*(columns_num(iband,  myid)*(jmaxR-jminR+1))     ! Size of the data to be RECEIVED
-        msizeS = max(msizeS,0)                                     ! The size has to be 0 or positive. 
-        msizeR = max(msizeR,0)
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do j=jminS,jmaxS
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            buffS(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j))     ! The data is transposed and stored in a buffer
-          end do
+    
+    plband = bandPL(myid)
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf     = max( nyvIB1(myid), jlim(1,vgrid,iband)+1 )  ! Select the planes to transpose 
+        jmaxSelf     = min( nyvIB2(myid), jlim(2,vgrid,iband)-1 )
+        jminS(iband) = max( nyvIB1(myid), jlim(1,vgrid,iband)+1 )  ! Select the planes to be SENT.
+        jmaxS(iband) = min( nyvIB2(myid), jlim(2,vgrid,iband)-1 ) 
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,myid)
+                i = columns_i(column,iband,myid)
+                k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
+                x(iband)%f(j,column) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) ) ! Transposition: Reordering from XZY to YC
+            end do
         end do
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &   ! SEND_RECV so it can send and receive at the same time
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j=jminR,jmaxR
-          do column = 1,columns_num(iband,myid)
-            x(iband)%f(j,column) = buffR(j,column)                         ! Store the data received
-          end do
-        end do
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        deallocate(buffR,buffS)
-      end do
-    end if
-  end do
+    End Do
+
+
+    allocate( buffS( P2M_MaxNumbS(vgrid) ) )
+    allocate( buffR( P2M_MaxNumbR(vgrid) ) )
+
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )   ! XOR. It's used to pair procs 1-to-1
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminR( iband) = max( nyvIB1(yourid), jlim(1,vgrid,iband)+1 )  ! Select the planes to be RECEIVED
+                jmaxR( iband) = min( nyvIB2(yourid), jlim(2,vgrid,iband)-1 )
+                msizeR(iband) = columns_num(iband,  myid) * (jmaxR(iband)-jminR(iband)+1)        ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffS = iBuffS + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        buffS(iBuffS) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) ) ! The data is transposed and stored in a buffer
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &   ! SEND_RECV so it can send and receive at the same time
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffR = iBuffR + 1
+                        x(iband)%f(j,column) = buffR(iBuffR) ! Store the data received
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 
@@ -2086,82 +2217,104 @@ subroutine planes_to_modes_NUVP(x,xPL,grid,myid,status,ierr)
 !!!!!!!!!!!!!!!!!!!!!! PLANES TO MODES !!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! Prepare the vectors for the Fourier transform
-! The procs broadcast the data they have of a plane, and receive the data of a pencil,
-!  they also transpose the data for the Fourier transform XZY -> YXZ
+! To address the sending-receiving imbalance of the original 'band-to-band' strategy
+! for communication between two processes, the data to be sent/received in all of the
+! three bands are packed in a single sending/receiving buffer ('buffS/buffR'), yielding
+! a 'process-to-process' strategy. (Apr. 2021)
 
 
-  use declaration
-  implicit none
+    use declaration
+    implicit none
+    include 'mpif.h'             ! MPI variables
 
-  include 'mpif.h'             ! MPI variables
-  integer status(MPI_STATUS_SIZE),ierr,myid
+    integer,      intent(in ) :: grid
+    type(cfield), intent(out) :: x(sband:eband)
+    real(8),      intent(in ) :: xPL(igal,kgal,jgal(grid,1)  :jgal(grid,2)  )
+    integer,      intent(in ) :: myid
+    integer,      intent(out) :: status(MPI_STATUS_SIZE)
+    integer,      intent(out) :: ierr
 
-  integer i,k,j,jminS,jmaxS,jminR,jmaxR,plband,grid
-  integer iband,jband
-  integer column
-  integer inode,yourid
-  integer msizeR,msizeS
-  type(cfield) x  (sband:eband)
-  real(8)      xPL(igal,kgal,jgal(grid,1):jgal(grid,2))
-  complex(8), allocatable:: buffS(:,:),buffR(:,:)
+    integer inode
+    integer yourid
+    integer nfake
+    integer plband
+    integer i, k, j
+    integer column
+    integer iband
+    
+    integer :: jminSelf, jmaxSelf
+    integer :: jminS(sband:eband), jmaxS(sband:eband)
+    integer :: jminR(sband:eband), jmaxR(sband:eband)
+    integer :: msizeR(sband:eband)
+    integer :: msizeRtot
+    integer :: tagS, iBuffS
+    integer :: tagR, iBuffR
+    complex(8), allocatable :: buffS(:)
+    complex(8), allocatable :: buffR(:)
 
-! DELETE  plband=bandPL(myid)  
-
-  ! Loop for itself
-  ! Transpose the cube that it already owns
-  plband = bandPL(myid) ! Return the band (phys) the proc works at
-  do iband = sband,eband
-    jminR = max(limPL_excw(grid,1,myid),jlim(1,grid,iband)+1)  ! Select the planes to transpose 
-    jmaxR = min(limPL_excw(grid,2,myid),jlim(2,grid,iband)-1)
-    do j = jminR,jmaxR
-      do column = 1,columns_num(iband,myid)
-        i = columns_i(column,iband,myid)
-        k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
-        x(iband)%f(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j)) ! Transposition: Reordering from XZY to YC
-      end do
-    end do
-  end do
-
-  do inode = 1,pnodes-1
-    yourid = ieor(myid,inode)   ! XOR. It's used to pair procs 1-to-1
-    if (yourid<np) then
-      !do iband=bandit(1),bandit(2),bandit(3)   ! Iterate first over the short pencils and then the long ones.
-      do iband = sband,eband
-        !jband = crossband(iband,yourid)
-        jband = iband
-        jminS = max(limPL_excw(grid,1,  myid),jlim(1,grid,jband)+1)  ! Select the planes to be SENT.
-        jmaxS = min(limPL_excw(grid,2,  myid),jlim(2,grid,jband)-1)  ! max and min because maybe this proc needs less planes that the other proc has
-        jminR = max(limPL_excw(grid,1,yourid),jlim(1,grid,iband)+1)  ! Select the planes to be RECEIVED
-        jmaxR = min(limPL_excw(grid,2,yourid),jlim(2,grid,iband)-1)
-        ! Special cases: interfaces
-        allocate(buffS(jminS:jmaxS,columns_num(jband,yourid)))
-        allocate(buffR(jminR:jmaxR,columns_num(iband,  myid)))
-        msizeS = 2*(columns_num(jband,yourid)*(jmaxS-jminS+1))     ! Size of the data to be SENDER (times 2, because it is complex)
-        msizeR = 2*(columns_num(iband,  myid)*(jmaxR-jminR+1))     ! Size of the data to be RECEIVED
-        msizeS = max(msizeS,0)                                     ! The size has to be 0 or positive. 
-        msizeR = max(msizeR,0)
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do j=jminS,jmaxS
-          do column = 1,columns_num(jband,yourid)
-            i = columns_i(column,jband,yourid)
-            k = columns_k(column,jband,yourid) - dk(column,jband,yourid,bandPL(myid))
-            buffS(j,column) = dcmplx(xPL(2*i+1,k,j),xPL(2*i+2,k,j))     ! The data is transposed and stored in a buffer
-          end do
+    
+    plband = bandPL(myid)
+    yourid = myid
+    Do iband = sband, eband
+        jminSelf     = max( limPL_excw(grid,1,  myid), jlim(1,grid,iband)+1 )  ! Select the planes to transpose 
+        jmaxSelf     = min( limPL_excw(grid,2,  myid), jlim(2,grid,iband)-1 )
+        jminS(iband) = max( limPL_excw(grid,1,  myid), jlim(1,grid,iband)+1 )  ! Select the planes to be SENT.
+        jmaxS(iband) = min( limPL_excw(grid,2,  myid), jlim(2,grid,iband)-1 )  ! max and min because maybe this proc needs less planes that the other proc has
+        do j = jminSelf, jmaxSelf
+            do column = 1, columns_num(iband,myid)
+                i = columns_i(column,iband,myid)
+                k = columns_k(column,iband,myid) - dk(column,iband,myid,bandPL(myid))
+                x(iband)%f(j,column) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) )
+            end do
         end do
-        call MPI_SENDRECV(buffS,msizeS,MPI_REAL8,yourid,77*yourid+53*myid+7*iband+11*jband, &   ! SEND_RECV so it can send and receive at the same time
-&                         buffR,msizeR,MPI_REAL8,yourid,53*yourid+77*myid+11*iband+7*jband, &
-&                         MPI_COMM_WORLD,status,ierr)
-        do j=jminR,jmaxR
-          do column = 1,columns_num(iband,myid)
-            x(iband)%f(j,column) = buffR(j,column)                         ! Store the data received
-          end do
-        end do
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        deallocate(buffR,buffS)
-      end do
-    end if
-  end do
+    End Do
+
+
+    allocate( buffS( P2M_MaxNumbS(grid) ) )
+    allocate( buffR( P2M_MaxNumbR(grid) ) )
+
+    DO inode = 1, pnodes - 1
+        yourid = ieor( myid, inode )    ! XOR. It's used to pair procs 1-to-1
+        Do nfake = yourid/np, 0    ! If ( yourid < np ) Then
+            do iband = sband, eband
+                jminR( iband) = max( limPL_excw(grid,1,yourid), jlim(1,grid,iband)+1 )  ! Select the planes to be RECEIVED
+                jmaxR( iband) = min( limPL_excw(grid,2,yourid), jlim(2,grid,iband)-1 )
+                msizeR(iband) = columns_num(iband,  myid) * (jmaxR(iband)-jminR(iband)+1)    ! Note: not doubled here!
+                msizeR(iband) = max( msizeR(iband), 0 )
+            end do
+            msizeRtot = sum( msizeR, 1 )
+            
+            iBuffS = 0
+            do iband = sband, eband
+                do j = jminS(iband), jmaxS(iband)
+                    do column = 1, columns_num(iband,yourid)
+                        iBuffS = iBuffS + 1
+                        i = columns_i(column,iband,yourid)
+                        k = columns_k(column,iband,yourid) - dk(column,iband,yourid,bandPL(myid))
+                        buffS(iBuffS) = dcmplx( xPL(2*i+1,k,j), xPL(2*i+2,k,j) )
+                    end do
+                end do
+            end do
+
+            tagS = 77 * yourid + 53 * myid
+            tagR = 53 * yourid + 77 * myid
+            call MPI_SENDRECV( buffS(1:iBuffS   ), 2*iBuffS   , MPI_REAL8, yourid, tagS, &
+                             & buffR(1:msizeRtot), 2*msizeRtot, MPI_REAL8, yourid, tagR, &
+                             & MPI_COMM_WORLD, status, ierr)
+
+            iBuffR = 0
+            do iband = sband, eband
+                do j = jminR(iband), jmaxR(iband)
+                    do column = 1, columns_num(iband,  myid)
+                        iBuffR = iBuffR + 1
+                        x(iband)%f(j,column) = buffR(iBuffR)
+                    end do
+                end do
+            end do
+        End Do    ! End If
+    END DO
+
+    deallocate( buffS, buffR )
 
 end subroutine
 

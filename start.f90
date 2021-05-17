@@ -451,6 +451,8 @@ end if
   ! nyIB1, nyIB2 store  the planes that contain 'solid' point for a certain proc 
   call getbounds(myid,status,ierr)
 
+  call Full_Comm_Maps( myid )
+
   ! dnz = nb of points per tile
   if (geometry_type /= 0) then
     dnx = Ngal(1,1)/ntilex
@@ -2797,3 +2799,128 @@ subroutine init_stats(myid)
  end if
 
 end subroutine
+
+
+Subroutine Full_Comm_Maps( myid )
+use declaration
+implicit none
+integer, intent(in) :: myid
+    
+    integer :: grid
+    integer :: yourid
+    integer :: iband
+    integer :: plband
+    integer :: js1, js2, jr1, jr2
+    integer :: ntmpS, ntmpR
+
+
+    plband = bandPL(myid)
+
+    allocate( M2P_NBuffS(       1:3),  M2P_NBuffR(       1:3) )
+    allocate( M2P_NumbS(0:np-1, 1:3),  M2P_NumbR(0:np-1, 1:3) )
+    allocate( M2P_MaxNumbS(     1:3),  M2P_MaxNumbR(     1:3) )
+    allocate( M2P_DispS(0:np-1, 1:3),  M2P_DispR(0:np-1, 1:3) )
+
+    DO grid = 1, 3
+        Do yourid = 0, np-1
+            ntmpS = 0
+            ntmpR = 0
+            If ( yourid == myid ) Then
+                do iband = sband, eband
+                    js1 = max( planelim(grid,1,myid), jlim(1,grid,iband)+1 )
+                    js2 = min( planelim(grid,2,myid), jlim(2,grid,iband)-1 )
+                    if ( js1 == Ny(grid,plband-1)+1 .and. js2 >= js1 ) js1 = js1 - 1
+                    if ( js2 == Ny(grid,plband  )   .and. js2 >= js1 ) js2 = js2 + 1
+                    ntmpS = ntmpS + columns_num(iband,myid) * max(js2-js1+1,0) ! Note: not doubled here!
+                end do
+                ntmpR = ntmpS
+            Else
+                do iband = sband, eband
+                    js1 = max( planelim(grid,1,yourid), jlim(1,grid,iband)+1 )
+                    js2 = min( planelim(grid,2,yourid), jlim(2,grid,iband)-1 )
+                    if ( js1 == Ny(grid,0) + 1 ) js1 = js1 - 1
+                    if ( js2 == Ny(grid,nband) ) js2 = js2 + 1
+                    ntmpS = ntmpS + columns_num(iband,  myid) * max(js2-js1+1,0) ! Note: not doubled here!
+                
+                    jr1 = max( planelim(grid,1,  myid), jlim(1,grid,iband)+1 )
+                    jr2 = min( planelim(grid,2,  myid), jlim(2,grid,iband)-1 )
+                    if ( jr1 == Ny(grid,0) + 1 ) jr1 = jr1 - 1
+                    if ( jr2 == Ny(grid,nband) ) jr2 = jr2 + 1
+                    ntmpR = ntmpR + columns_num(iband,yourid) * max(jr2-jr1+1,0) ! Note: not doubled here!
+                end do
+            End If
+            M2P_NumbS(yourid,grid) = ntmpS
+            M2P_NumbR(yourid,grid) = ntmpR
+        End Do
+
+        M2P_DispS(0,grid) = 0
+        M2P_DispR(0,grid) = 0
+        Do yourid = 1, np-1
+            M2P_DispS(yourid,grid) = M2P_DispS(yourid-1,grid) + M2P_NumbS(yourid-1,grid)
+            M2P_DispR(yourid,grid) = M2P_DispR(yourid-1,grid) + M2P_NumbR(yourid-1,grid)
+        End Do
+        M2P_NBuffS(  grid) = sum(    M2P_NumbS(:,grid) )
+        M2P_NBuffR(  grid) = sum(    M2P_NumbR(:,grid) )
+        M2P_MaxNumbS(grid) = maxval( M2P_NumbS(:,grid) )
+        M2P_MaxNumbR(grid) = maxval( M2P_NumbR(:,grid) )
+    END DO
+
+!    allocate( M2P_BuffSend( maxval(M2P_NBuffS) ) )    ! Used by 'MPI_ALLTOALLV'
+!    allocate( M2P_BuffRecv( maxval(M2P_NBuffR) ) )    ! Used by 'MPI_ALLTOALLV'
+
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    allocate( P2M_NBuffS(       1:3),  P2M_NBuffR(       1:3) )
+    allocate( P2M_NumbS(0:np-1, 1:3),  P2M_NumbR(0:np-1, 1:3) )
+    allocate( P2M_MaxNumbS(     1:3),  P2M_MaxNumbR(     1:3) )
+    allocate( P2M_DispS(0:np-1, 1:3),  P2M_DispR(0:np-1, 1:3) )
+
+    DO grid = 1, 3
+        Do yourid = 0, np-1
+            ntmpS = 0
+            ntmpR = 0
+            If ( yourid == myid ) Then
+                do iband = sband, eband
+                    js1 = max( limPL_excw(grid,1,myid), jlim(1,grid,iband)+1 )
+                    js2 = min( limPL_excw(grid,2,myid), jlim(2,grid,iband)-1 )
+                    if ( js1 == Ny(grid,plband-1)+1 .and. js2 >= js1 ) js1 = js1 - 1
+                    if ( js2 == Ny(grid,plband  )   .and. js2 >= js1 ) js2 = js2 + 1
+                    ntmpS = ntmpS + columns_num(iband,myid) * max(js2-js1+1,0) ! Note: not doubled here!
+                end do
+                ntmpR = ntmpS
+            Else
+                do iband = sband, eband
+                    js1 = max( limPL_excw(grid,1,  myid), jlim(1,grid,iband)+1 )
+                    js2 = min( limPL_excw(grid,2,  myid), jlim(2,grid,iband)-1 )
+                    if ( js1 == Ny(grid,0) + 1 ) js1 = js1 - 1
+                    if ( js2 == Ny(grid,nband) ) js2 = js2 + 1
+                    ntmpS = ntmpS + columns_num(iband,yourid) * max(js2-js1+1,0) ! Note: not doubled here!
+                
+                    jr1 = max( limPL_excw(grid,1,yourid), jlim(1,grid,iband)+1 )
+                    jr2 = min( limPL_excw(grid,2,yourid), jlim(2,grid,iband)-1 )
+                    if ( jr1 == Ny(grid,0) + 1 ) jr1 = jr1 - 1
+                    if ( jr2 == Ny(grid,nband) ) jr2 = jr2 + 1
+                    ntmpR = ntmpR + columns_num(iband,  myid) * max(jr2-jr1+1,0) ! Note: not doubled here!
+                end do
+            End If
+            P2M_NumbS(yourid,grid) = ntmpS
+            P2M_NumbR(yourid,grid) = ntmpR
+        End Do
+
+        P2M_DispS(0,grid) = 0
+        P2M_DispR(0,grid) = 0
+        Do yourid = 1, np-1
+            P2M_DispS(yourid,grid) = P2M_DispS(yourid-1,grid) + P2M_NumbS(yourid-1,grid)
+            P2M_DispR(yourid,grid) = P2M_DispR(yourid-1,grid) + P2M_NumbR(yourid-1,grid)
+        End Do
+        P2M_NBuffS(  grid) = sum(    P2M_NumbS(:,grid) )
+        P2M_NBuffR(  grid) = sum(    P2M_NumbR(:,grid) )
+        P2M_MaxNumbS(grid) = maxval( P2M_NumbS(:,grid) )
+        P2M_MaxNumbR(grid) = maxval( P2M_NumbR(:,grid) )
+    END DO
+
+!    allocate( P2M_BuffSend( maxval(P2M_NBuffS) ) )    ! Used by 'MPI_ALLTOALLV'
+!    allocate( P2M_BuffRecv( maxval(P2M_NBuffR) ) )    ! Used by 'MPI_ALLTOALLV'
+
+
+End Subroutine
