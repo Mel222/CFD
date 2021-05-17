@@ -1,4 +1,4 @@
-r_p1=       4.5d0 ! radius of first post 
-c_i_p1=      9.d0 ! centre of first post x coordinate 
-c_k_p1=      9.d0 ! centre of first post z coordinate
-stag=       0.5d0 ! amount to stagger by 
+r_p1  = 5.43723d0 ! radius of first post 
+c_i_p1=    12.0d0 ! centre of first post x coordinate 
+c_k_p1=    12.0d0 ! centre of first post z coordinate
+stag=       0.5d0 ! amount to stagger by
