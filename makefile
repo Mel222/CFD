@@ -15,8 +15,8 @@ F77 = mpif90
 ########################  compiler flags  #########################
 
 #F90FLAGS= -c
-F90FLAGS= -c 
-#F90FLAGS= -c -fbacktrace -fbounds-check 
+#F90FLAGS= -c 
+F90FLAGS= -c -fbacktrace -fbounds-check 
 #F90FLAGS = -c -warn -CB -debug extended
 F77FLAGS= -c
 LFLAGS =
