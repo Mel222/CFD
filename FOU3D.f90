@@ -1642,14 +1642,16 @@ subroutine ops_in_planes(myid,flagst)
     call der_z(uw_cPL(1,1,j),du1dz,k1F_z,bandPL(myid))
     call der_x(uw_cPL(1,1,j),du3dx,k1F_x,bandPL(myid))
     call der_z(ww_cPL(1,1,j),du3dz,k1F_z,bandPL(myid))
+
+   end do 
    
+  do j = limPL_excw(ugrid,1,myid),limPL_excw(ugrid,2,myid)
     do k = 1,Ngal(2,bandPL(myid))
       do i = 1,Ngal(1,bandPL(myid))
         Nu1PL(i,k,j) = du1dx(i,k)+du1dz(i,k)
         Nu3PL(i,k,j) = du3dx(i,k)+du3dz(i,k)
       end do
     end do
-
   end do
   
 !  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
@@ -1670,12 +1672,14 @@ subroutine ops_in_planes(myid,flagst)
     call der_x(uv_fPL(1,1,j),du2dx,k1F_x,bandPL(myid))
     call der_z(vw_fPL(1,1,j),du2dz,k1F_z,bandPL(myid))
 
+  end do 
+
+  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
     do k = 1,Ngal(2,bandPL(myid))
       do i = 1,Ngal(1,bandPL(myid))
         Nu2PL(i,k,j) = du2dx(i,k)+du2dz(i,k)   
       end do
     end do
-    
   end do
   
   deallocate(du1dx,du1dz,du2dx,du2dz,du3dx,du3dz)
