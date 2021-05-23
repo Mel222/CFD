@@ -575,10 +575,6 @@ print*, "nyu11, 21, 12, 22", nyu11, nyu21, nyu12, nyu22
     end do
   end do
 
-! Change dnx and ntilex to be correct for unify stats
-  dnx = dnx*2
-  ntilex = ntilex/2
-
 ! Sort the lists 
   allocate(sortInd(nlist_ib_bot_v))
   call MergeSort3D(nlist_ib_bot_v, list_ib_bot_v(1:3,:), sortInd, (/.true.,.true.,.true./))

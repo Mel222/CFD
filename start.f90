@@ -453,6 +453,21 @@ end if
 
   call Full_Comm_Maps( myid )
 
+  ! dnz = nb of points per tile
+  if (geometry_type /= 0) then
+    dnx = Ngal(1,1)/ntilex
+    dnz = Ngal(2,1)/ntilez
+!     dnx = N(1,1)/ntilex
+!     dnz = N(2,1)/ntilez
+!     print *, "dnx/z N"
+  else
+    dnx = 0
+    dnz = 0
+!     !Add Conditional for smooth wall?
+!     dnx = Ngal(1,1)/ntilex
+!     dnz = Ngal(2,1)/ntilez
+  end if
+
   ! Creates a vector of indices with an extra tile and the peoriodicity.
   ! Ex: Ngal = 10, tilez = 3 -> indkor(0:11) = [10,1,2,...,10,1]
   ! It's only used in stats.f90 and only in bands 1 and 3 (phys)
