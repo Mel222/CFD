@@ -455,6 +455,7 @@ end if
 
   ! dnz = nb of points per tile
   if (geometry_type /= 0) then
+    ntilex = ntilex/2 ! Mel: staggered posts 
     dnx = Ngal(1,1)/ntilex
     dnz = Ngal(2,1)/ntilez
 !     dnx = N(1,1)/ntilex
@@ -467,7 +468,7 @@ end if
 !     dnx = Ngal(1,1)/ntilex
 !     dnz = Ngal(2,1)/ntilez
   end if
-
+  write(*,*) dnx, dnz
   ! Creates a vector of indices with an extra tile and the peoriodicity.
   ! Ex: Ngal = 10, tilez = 3 -> indkor(0:11) = [10,1,2,...,10,1]
   ! It's only used in stats.f90 and only in bands 1 and 3 (phys)
