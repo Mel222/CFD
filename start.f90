@@ -468,7 +468,10 @@ end if
 !     dnx = Ngal(1,1)/ntilex
 !     dnz = Ngal(2,1)/ntilez
   end if
-  write(*,*) dnx, dnz
+  if (myid == 0) then 
+    write(*,*) 'Points per tile x and z ', dnx, dnz, ntilex, ntilez
+  end if 
+  
   ! Creates a vector of indices with an extra tile and the peoriodicity.
   ! Ex: Ngal = 10, tilez = 3 -> indkor(0:11) = [10,1,2,...,10,1]
   ! It's only used in stats.f90 and only in bands 1 and 3 (phys)
@@ -527,9 +530,9 @@ end if
   allocate( u2PL_itp   (igal,kgal,jgal(ugrid,1)-1:jgal(ugrid,2)+1))
   allocate( u3PL_itp   (igal,kgal,jgal(vgrid,1)-1:jgal(vgrid,2)+1))
   allocate( ppPL       (igal,kgal,jgal(pgrid,1)-1:jgal(pgrid,2)+1))
-  allocate(Nu1PL       (igal,kgal,jgal(ugrid,1)-1:jgal(ugrid,2)+1))
-  allocate(Nu2PL       (igal,kgal,jgal(vgrid,1)-1:jgal(vgrid,2)+1))
-  allocate(Nu3PL       (igal,kgal,jgal(ugrid,1)-1:jgal(ugrid,2)+1))
+  allocate(Nu1PL       (igal,kgal,jgal(ugrid,1)  :jgal(ugrid,2)  ))
+  allocate(Nu2PL       (igal,kgal,jgal(vgrid,1)  :jgal(vgrid,2)  ))
+  allocate(Nu3PL       (igal,kgal,jgal(ugrid,1)  :jgal(ugrid,2)  ))
   allocate(Nu1PL_dy    (igal,kgal,jgal(ugrid,1)  :jgal(ugrid,2)  ))
   allocate(Nu2PL_dy    (igal,kgal,jgal(vgrid,1)  :jgal(vgrid,2)  ))
   allocate(Nu3PL_dy    (igal,kgal,jgal(ugrid,1)  :jgal(ugrid,2)  ))
