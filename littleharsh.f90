@@ -156,11 +156,11 @@ nextqt = floor(t*10d0)/10d0+0.1d0
   call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
   ! MAIN LOOP 
-  do while (t<maxt) ! This is the original condition
+!  do while (t<maxt) ! This is the original condition
   !do while (t<maxt .AND. iter < 200)
     ! Runge-Kutta substeps
-    do kRK = 1,3
-!    do kRK = 1,1
+!    do kRK = 1,3
+    do kRK = 1,1
       ! Build     linear terms of right-hand-side of Navier-Stokes equation
       call RHS0_u1(du1,u1,Nu1,p,Lu1,myid)
       call RHS0_u2(du2,u2,Nu2,p,Lu2,myid)
@@ -197,7 +197,7 @@ nextqt = floor(t*10d0)/10d0+0.1d0
 
     iter = iter+1
 
-  end do 
+!  end do 
 
   call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
