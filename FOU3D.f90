@@ -1637,7 +1637,11 @@ subroutine ops_in_planes(myid,flagst)
     call phys_to_four_du(uw_cPL(1,1,j),bandPL(myid))    
     call phys_to_four_du(vv_cPL(1,1,j),bandPL(myid))    
     call phys_to_four_du(ww_cPL(1,1,j),bandPL(myid))    
+
+  end do 
   
+  do j = limPL_excw(ugrid,1,myid),limPL_excw(ugrid,2,myid)
+
     call der_x(uu_cPL(1,1,j),du1dx,k1F_x,bandPL(myid))
     call der_z(uw_cPL(1,1,j),du1dz,k1F_z,bandPL(myid))
     call der_x(uw_cPL(1,1,j),du3dx,k1F_x,bandPL(myid))
@@ -1666,7 +1670,11 @@ subroutine ops_in_planes(myid,flagst)
     
     call phys_to_four_du(uv_fPL(1,1,j),bandPL(myid))
     call phys_to_four_du(vw_fPL(1,1,j),bandPL(myid))  
+
+  end do 
     
+  do j = limPL_excw(vgrid,1,myid),limPL_excw(vgrid,2,myid)
+
     call der_x(uv_fPL(1,1,j),du2dx,k1F_x,bandPL(myid))
     call der_z(vw_fPL(1,1,j),du2dz,k1F_z,bandPL(myid))
 
