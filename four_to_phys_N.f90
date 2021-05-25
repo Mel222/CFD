@@ -49,8 +49,8 @@ program four_to_phys
   ! Defining Ngal from N
   Ngal = N
   do iband = 1,nband
-    Ngal(1,iband) = N(1,iband)*3/2
-    Ngal(2,iband) = N(2,iband)*3/2
+    Ngal(1,iband) = N(1,iband)!*3/2
+    Ngal(2,iband) = N(2,iband)!*3/2
   end do
   write(20) Ngal
   allocate(yu    (N(4,0):N(4,nband)+1))
